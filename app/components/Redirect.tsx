@@ -15,4 +15,6 @@ export function Redirect(){
             router.push("/");
         }
     }, [session.status, router]);
+    
+    return null;
 }
