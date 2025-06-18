@@ -37,9 +37,10 @@ export async function GET(req: NextRequest) {
     })
 
     return NextResponse.json({
-        streams: streams.map((_count, ...rest) => ({
-            ...rest,
-            upvotes: _count._count.upvotes,
+        streams: streams.map((stream) => ({
+            ...stream,
+            upvotes: stream._count.upvotes, 
+            hasUserVoted: stream.upvotes.length ? 1 : 0, // 1 if user has voted, 0 if not
         })),
     }, {
         status: 200

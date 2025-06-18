@@ -49,6 +49,7 @@ export async function POST(req: NextRequest){
 
         const stream = await prismaClient.stream.create({
           data : {
+           title: res.title,
            userId: data.creatorId,
            url: data.url,
            extractedId,

@@ -26,6 +26,7 @@ import {
 import { BiMusic, BiTrendingUp } from "react-icons/bi"
 import { HiOutlineSparkles, HiOutlineFire } from "react-icons/hi"
 import axios from "axios"
+import { set } from "zod"
 
 const REFRESH_INTERVAL_MS = 10 * 1000 // 10 seconds
 // Mock data for current playing song
@@ -180,24 +181,51 @@ export default function Dashboard() {
       
       if (!res.ok) {
         console.warn("Failed to fetch streams:", res.status);
-        return;
+        return null;
       }
       
       const data = await res.json();
       console.log("Streams refreshed:", data);
+      return data;
     } catch (error) {
       console.error("Error refreshing streams:", error);
+      return null;
     }
   }
 
   useEffect(() => {
-    refreshStreams();
+    const fetchInitialStreams = async () => {
+      const streams = await refreshStreams();
+      console.log("Initial streams fetched:", streams.streams);
+      console.log(streams.streams[0].type)
+      if (streams) {
+        // Transform the API data to match your queue structure
+        const transformedStreams = streams.streams.map((stream: any) => ({
+          id: stream.id,
+          title: stream.title || "Unknown Title",
+          artist: stream.artist || "Unknown Artist", 
+          duration: stream.duration || "0:00",
+          platform: stream.type.toLowerCase(), // "YouTube" -> "youtube"
+          videoId: stream.extractedId,
+          thumbnail: stream.smallImg,
+          votes: stream._count.upvotes || 0,
+          userVoted: stream.hasUserVoted || null,
+          submittedBy: stream.submittedBy || "anonymous"
+        }));
+        
+        setQueue(transformedStreams);
+      }
+    };
+    
+    fetchInitialStreams();
+    
     const interval = setInterval(() => {
       // refreshStreams();
     }, REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, []);
+  console.log("Queue initialized:", queue)
 
   // Handle music URL input
   useEffect(() => {
@@ -252,6 +280,10 @@ export default function Dashboard() {
 
   const handleVote = (songId: number, isUpvote: boolean) => {
     fetch(`/api/streams/upvote/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ 
         streamId: songId
       }),

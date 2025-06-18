@@ -28,12 +28,14 @@ model Stream{
   url            String
   extractedId    String
   title          String         @default("")
+  artist         String         @default("")
   smallImg       String         @default("")
   bigImg         String         @default("")
   active         Boolean        @default(true)
   upvotes        Upvote[]
   userId         String
   user           User           @relation(fields: [userId], references: [id])
+  submittedBy    String          @default("anonymous")
 }
 
 model Upvote{
