@@ -35,13 +35,13 @@ model Stream{
   artist         String         @default("")
   smallImg       String         @default("")
   bigImg         String         @default("")
-  duration       String         @default("PT0M0S")
+  duration       Int            @default(0)
   active         Boolean        @default(true)
-  upvotes        Upvote[]
-  downvotes      Downvote[]
+  upvotes        Upvote[]       
+  downvotes      Downvote[]     
   createdAt      DateTime       @default(now())
   userId         String
-  user           User           @relation(fields: [userId], references: [id])
+  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
   submittedBy    String          @default("anonymous")
 }
 
@@ -49,16 +49,16 @@ model Upvote{
   id            String         @id @default(uuid())
   userId        String
   streamId      String
-  user          User           @relation(fields: [userId], references: [id])
-  stream        Stream         @relation(fields: [streamId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stream        Stream         @relation(fields: [streamId], references: [id], onDelete: Cascade)
   @@unique([userId, streamId])
 }
 model Downvote{
   id            String         @id @default(uuid())
   userId        String
   streamId      String
-  user          User           @relation(fields: [userId], references: [id])
-  stream        Stream         @relation(fields: [streamId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stream        Stream         @relation(fields: [streamId], references: [id], onDelete: Cascade)
   @@unique([userId, streamId])
 }
 

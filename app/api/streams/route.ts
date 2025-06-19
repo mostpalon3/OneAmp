@@ -1,15 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prismaClient } from "@/app/lib/db";
-const youtubesearchapi = require("youtube-search-api");
-
-// Updated regex to support both regular videos and playlist videos
-const YT_REGEX = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[?&]\S+)?$/;
+// import { getServerSession } from "next-auth";
+// import { GET as handler } from "@/app/api/auth/[...nextauth]/route";
 
 const CreateStreamSchema = z.object({
   creatorId: z.string(),
   url: z.string()
 });
+
+// Helper function to parse YouTube duration format (PT4M13S) to seconds
+function parseDuration(duration: string): number {
+  // YouTube API returns duration in ISO 8601 format (e.g., "PT4M13S")
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  
+  if (!match) {
+    return 0;
+  }
+  
+  const hours = parseInt(match[1] || '0', 10);
+  const minutes = parseInt(match[2] || '0', 10);
+  const seconds = parseInt(match[3] || '0', 10);
+  
+  return hours * 3600 + minutes * 60 + seconds;
+}
 
 // Helper function to extract video ID from various YouTube URL formats
 function extractVideoId(url: string): string | null {
@@ -61,7 +75,60 @@ function isValidYouTubeUrl(url: string): boolean {
   }
 }
 
+// Function to get video details using YouTube Data API v3
+async function getVideoDetails(videoId: string) {
+  const API_KEY = process.env.YOUTUBE_API_KEY;
+  
+  if (!API_KEY) {
+    throw new Error('YouTube API key is not configured');
+  }
+
+  const url = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${API_KEY}&part=snippet,contentDetails,statistics`;
+  
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`YouTube API request failed: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.items || data.items.length === 0) {
+      throw new Error('Video not found or is private/unavailable');
+    }
+    
+    const video = data.items[0];
+    const snippet = video.snippet;
+    const thumbnails = snippet.thumbnails;
+    
+    // Convert thumbnails to array format similar to youtube-search-api
+    const thumbnailArray = Object.entries(thumbnails).map(([key, thumbnail]: [string, any]) => ({
+      url: thumbnail.url,
+      width: thumbnail.width,
+      height: thumbnail.height,
+      quality: key
+    }));
+    
+    return {
+      title: snippet.title,
+      description: snippet.description,
+      channelTitle: snippet.channelTitle,
+      publishedAt: snippet.publishedAt,
+      duration: video.contentDetails.duration,
+      viewCount: video.statistics.viewCount,
+      thumbnail: {
+        thumbnails: thumbnailArray
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching video details:', error);
+    throw error;
+  }
+}
+
 export async function POST(req: NextRequest){
+  // const session = await getServerSession(handler);
     try{
         const data = CreateStreamSchema.parse(await req.json());
         
@@ -84,13 +151,9 @@ export async function POST(req: NextRequest){
             status: 411
           });
         }
-
-        console.log("Extracted ID:", extractedId);
         
-        const res = await youtubesearchapi.GetVideoDetails(extractedId);
-        console.log(res);
-        console.log("length; " + res.length);
-        console.log(JSON.stringify(res.thumbnail.thumbnails));
+        // Use YouTube Data API v3 instead of youtube-search-api
+        const res = await getVideoDetails(extractedId);
         
         const thumbnails = res.thumbnail.thumbnails;
         thumbnails.sort((a:{width:number}, b:{width:number}) => a.width < b.width ? -1 : 1);
@@ -103,7 +166,10 @@ export async function POST(req: NextRequest){
            extractedId,
            type: "YouTube",
            smallImg: (thumbnails.length > 1?thumbnails[thumbnails.length - 2].url:thumbnails[thumbnails.length - 1].url) ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1dcc99fa72.jpg",
-           bigImg: thumbnails[thumbnails.length - 1].url ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1dcc99fa72.jpg",
+           bigImg: thumbnails[thumbnails.length - 1].url ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1d1cc99fa72.jpg",
+           duration: parseDuration(res.duration),
+           artist: res.channelTitle,
+          //  submittedBy: session?.user?.name ?? "anonymous",
         }
         });
         

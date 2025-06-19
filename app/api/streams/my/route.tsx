@@ -26,23 +26,30 @@ export async function GET(req: NextRequest) {
             _count: {
                 select: {
                     upvotes: true,
+                    downvotes: true,
                 }
             },
             upvotes: {
                 where: {
                     userId: user.id ?? ""
                 }
+            },
+            downvotes: {
+                where: {
+                    userId: user.id
+                }
             }
         }
     })
 
+    const streamsWithVotes = streams.map(stream => ({
+        ...stream,
+        votes: stream._count.upvotes - stream._count.downvotes,
+        userVoted: stream.upvotes.length > 0 ? "up" : 
+                  stream.downvotes.length > 0 ? "down" : null
+    }));
+
     return NextResponse.json({
-        streams: streams.map((stream) => ({
-            ...stream,
-            upvotes: stream._count.upvotes, 
-            hasUserVoted: stream.upvotes.length ? 1 : 0, // 1 if user has voted, 0 if not
-        })),
-    }, {
-        status: 200
+        streams: streamsWithVotes
     });
 }

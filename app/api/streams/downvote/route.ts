@@ -9,12 +9,12 @@ const DownvoteSchema = z.object({
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession();
-    //TODO:u can get rid of db call here
     const user = await prismaClient.user.findFirst({
         where: {
             email: session?.user?.email ?? ""
         }
     });
+    
     if(!user){
         return NextResponse.json({
             message: "Unauthenticated"
@@ -26,8 +26,17 @@ export async function POST(req: NextRequest) {
     try {
         const data = DownvoteSchema.parse(await req.json());
         
-        // Check if user has already voted
-        const existingVote = await prismaClient.upvote.findUnique({
+        // Check existing votes
+        const existingUpvote = await prismaClient.upvote.findUnique({
+            where: {
+                userId_streamId: {
+                    userId: user.id,
+                    streamId: data.streamId
+                }
+            }
+        });
+        
+        const existingDownvote = await prismaClient.downvote.findUnique({
             where: {
                 userId_streamId: {
                     userId: user.id,
@@ -36,9 +45,9 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        if (existingVote) {
-            // User had upvoted, remove the upvote (this acts as a downvote)
-            await prismaClient.upvote.delete({
+        if (existingDownvote) {
+            // User already downvoted, remove the downvote
+            await prismaClient.downvote.delete({
                 where: {
                     userId_streamId: {
                         userId: user.id,
@@ -48,19 +57,37 @@ export async function POST(req: NextRequest) {
             });
             
             return NextResponse.json({
-                message: "Upvote removed (downvoted)",
-                action: "removed_upvote"
+                message: "Downvote removed successfully",
+                action: "removed"
             }, {
                 status: 200
             });
         } else {
-            // User hasn't voted, this downvote doesn't affect the database
-            // since you're only tracking upvotes in the database
+            // Remove upvote if exists
+            if (existingUpvote) {
+                await prismaClient.upvote.delete({
+                    where: {
+                        userId_streamId: {
+                            userId: user.id,
+                            streamId: data.streamId
+                        }
+                    }
+                });
+            }
+            
+            // Add downvote
+            await prismaClient.downvote.create({
+                data: {
+                    userId: user.id,
+                    streamId: data.streamId
+                }
+            });
+            
             return NextResponse.json({
-                message: "No upvote to remove",
-                action: "no_action"
+                message: "Downvoted successfully",
+                action: "added"
             }, {
-                status: 200
+                status: 201
             });
         }
     } catch (e) {

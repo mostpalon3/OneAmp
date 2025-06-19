@@ -9,12 +9,12 @@ const UpvoteSchema = z.object({
 
 export async function POST(req: NextRequest) {
     const session = await getServerSession();
-    //TODO:u can get rid of db call here
     const user = await prismaClient.user.findFirst({
         where: {
             email: session?.user?.email ?? ""
         }
     });
+    
     if(!user){
         return NextResponse.json({
             message: "Unauthenticated"
@@ -26,8 +26,17 @@ export async function POST(req: NextRequest) {
     try {
         const data = UpvoteSchema.parse(await req.json());
         
-        // Check if user has already voted
-        const existingVote = await prismaClient.upvote.findUnique({
+        // Check existing votes
+        const existingUpvote = await prismaClient.upvote.findUnique({
+            where: {
+                userId_streamId: {
+                    userId: user.id,
+                    streamId: data.streamId
+                }
+            }
+        });
+        
+        const existingDownvote = await prismaClient.downvote.findUnique({
             where: {
                 userId_streamId: {
                     userId: user.id,
@@ -36,7 +45,7 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        if (existingVote) {
+        if (existingUpvote) {
             // User already upvoted, remove the upvote
             await prismaClient.upvote.delete({
                 where: {
@@ -54,7 +63,19 @@ export async function POST(req: NextRequest) {
                 status: 200
             });
         } else {
-            // User hasn't upvoted, add the upvote
+            // Remove downvote if exists
+            if (existingDownvote) {
+                await prismaClient.downvote.delete({
+                    where: {
+                        userId_streamId: {
+                            userId: user.id,
+                            streamId: data.streamId
+                        }
+                    }
+                });
+            }
+            
+            // Add upvote
             await prismaClient.upvote.create({
                 data: {
                     userId: user.id,

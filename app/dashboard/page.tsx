@@ -27,8 +27,11 @@ import { BiMusic, BiTrendingUp } from "react-icons/bi"
 import { HiOutlineSparkles, HiOutlineFire } from "react-icons/hi"
 import axios from "axios"
 import { set } from "zod"
+import { url } from "inspector"
+
 
 const REFRESH_INTERVAL_MS = 10 * 1000 // 10 seconds
+
 // Mock data for current playing song
 const currentSong = {
   id: 1,
@@ -174,6 +177,8 @@ export default function Dashboard() {
   const [detectedPlatform, setDetectedPlatform] = useState<"youtube" | "spotify" | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentPlaying, setCurrentPlaying] = useState<"spotify" | "youtube">("youtube")
+  const [isLoading, setIsLoading] = useState(false)  
+  const [error, setError] = useState<string | null>(null)
 
   async function refreshStreams() {
     try {
@@ -203,11 +208,13 @@ export default function Dashboard() {
           title: stream.title || "Unknown Title",
           artist: stream.artist || "Unknown Artist", 
           duration: stream.duration || "0:00",
-          platform: stream.type.toLowerCase(), // "YouTube" -> "youtube"
+          platform: stream.type.toLowerCase(),
           videoId: stream.extractedId,
           thumbnail: stream.smallImg,
-          votes: stream._count.upvotes || 0,
-          userVoted: stream.hasUserVoted == 1 ? "up" : stream.hasUserVoted == 0 ? "down" : null,
+          // Calculate votes as upvotes - downvotes
+          votes: (stream._count?.upvotes || 0) - (stream._count?.downvotes || 0),
+          // Determine user vote status
+          userVoted: stream.userVoted || null,
           submittedBy: stream.userId || "anonymous"
         }));
         
@@ -223,100 +230,168 @@ export default function Dashboard() {
 
     return () => clearInterval(interval);
   }, []);
+  
   console.log("Queue initialized:", queue)
 
-
-
   // Handle music URL input
-  useEffect(() => {
-    if (musicUrl) {
-      const platform = detectPlatform(musicUrl)
-      setDetectedPlatform(platform)
+  // Helper function to format duration from seconds to MM:SS or HH:MM:SS
+function formatDuration(seconds: number): string {
+  if (!seconds || seconds === 0) return '0:00'
+  
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainingSeconds = seconds % 60
 
-      if (platform === "youtube") {
-        const videoId = extractYouTubeId(musicUrl)
-        if (videoId) {
-          setIsValidUrl(true)
-          // Mock video info - in real app, fetch from YouTube API
-          setMusicPreview({
-            platform: "youtube",
-            videoId,
-            title: "Sample YouTube Video",
-            artist: "Sample Artist",
-            duration: "3:45",
-            thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  } else {
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+}
+
+// Helper function to call your preview API
+async function fetchYouTubeVideoPreview(url: string) {
+  try {
+    const response = await fetch('/api/streams/preview', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: url,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Failed to fetch video details')
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('Preview API call failed:', error)
+    throw error
+  }
+}
+
+// Your updated useEffect
+useEffect(() => {
+  if (musicUrl) {
+    const platform = detectPlatform(musicUrl)
+    setDetectedPlatform(platform)
+
+    if (platform === "youtube") {
+      const videoId = extractYouTubeId(musicUrl)
+      if (videoId) {
+        setIsValidUrl(true)
+        setIsLoading(true) // Start loading
+        setError(null) // Clear any previous errors
+        
+        fetchYouTubeVideoPreview(musicUrl)
+          .then((videoData) => {
+            setMusicPreview({
+              creatorId:"bf9cda8f-aabc-4236-8d6b-ebb362574d62",
+              platform: "youtube",
+              videoId,
+              title: videoData.title,
+              artist: videoData.artist,
+              duration: formatDuration(videoData.duration), // Convert seconds to MM:SS format
+              thumbnail: videoData.bigImg,
+              url: musicUrl,
+            })
+            setIsLoading(false)
           })
-        } else {
-          setIsValidUrl(false)
-          setMusicPreview(null)
-        }
-      } else if (platform === "spotify") {
-        const trackId = extractSpotifyId(musicUrl)
-        if (trackId) {
-          setIsValidUrl(true)
-          // Mock track info - in real app, fetch from Spotify API
-          setMusicPreview({
-            platform: "spotify",
-            spotifyId: trackId,
-            title: "Sample Spotify Track",
-            artist: "Sample Artist",
-            duration: "3:20",
-            albumArt: "/placeholder.svg?height=300&width=300",
+          .catch((error) => {
+            console.error('Error fetching YouTube video details:', error)
+            setIsValidUrl(false)
+            setMusicPreview(null)
+            setIsLoading(false)
+            setError('Failed to fetch video details. Please check the URL and try again.')
           })
-        } else {
-          setIsValidUrl(false)
-          setMusicPreview(null)
-        }
+      } else {
+        setIsValidUrl(false)
+        setMusicPreview(null)
+      }
+    } else if (platform === "spotify") {
+      const trackId = extractSpotifyId(musicUrl)
+      if (trackId) {
+        setIsValidUrl(true)
+        // Mock track info - in real app, fetch from Spotify API
+        setMusicPreview({
+          platform: "spotify",
+          spotifyId: trackId,
+          title: "Sample Spotify Track",
+          artist: "Sample Artist",
+          duration: "3:20",
+          albumArt: "/placeholder.svg?height=300&width=300",
+        })
       } else {
         setIsValidUrl(false)
         setMusicPreview(null)
       }
     } else {
-      setIsValidUrl(null)
-      setDetectedPlatform(null)
+      setIsValidUrl(false)
       setMusicPreview(null)
     }
-  }, [musicUrl])
+  } else {
+    setIsValidUrl(null)
+    setDetectedPlatform(null)
+    setMusicPreview(null)
+    setError(null) // Clear error when URL is cleared
+  }
+}, [musicUrl])
 
-  const handleVote = (songId: number, isUpvote: boolean) => {
-    fetch(`/api/streams/${isUpvote?"upvote":"downvote"}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        streamId: songId
-      }),
-    })
-    setQueue(
-      (prevQueue) =>
+  const handleVote = async (songId: number, isUpvote: boolean) => {
+    try {
+      const response = await fetch(`/api/streams/${isUpvote ? "upvote" : "downvote"}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          streamId: songId.toString()
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Vote failed:', response.status);
+        return;
+      }
+
+      // Update local state optimistically
+      setQueue((prevQueue) =>
         prevQueue
           .map((song) => {
             if (song.id === songId) {
-              let newVotes = song.votes
-              let newUserVoted = song.userVoted
+              let newVotes = song.votes;
+              let newUserVoted = song.userVoted;
 
+              // Handle vote logic based on current state
               if (song.userVoted === (isUpvote ? "up" : "down")) {
-                // Remove vote
-                newVotes = isUpvote ? newVotes - 1 : newVotes + 1
-                newUserVoted = null
+                // User is removing their vote (clicking same button)
+                newVotes = isUpvote ? newVotes - 1 : newVotes + 1;
+                newUserVoted = null;
               } else if (song.userVoted === null) {
-                // Add vote
-                newVotes = isUpvote ? newVotes + 1 : newVotes - 1
-                newUserVoted = isUpvote ? "up" : "down"
+                // User is voting for the first time
+                newVotes = isUpvote ? newVotes + 1 : newVotes - 1;
+                newUserVoted = isUpvote ? "up" : "down";
               } else {
-                // Change vote
-                newVotes = isUpvote ? newVotes + 2 : newVotes - 2
-                newUserVoted = isUpvote ? "up" : "down"
+                // User is changing their vote (from up to down or vice versa)
+                newVotes = isUpvote ? newVotes + 2 : newVotes - 2;
+                newUserVoted = isUpvote ? "up" : "down";
               }
 
-              return { ...song, votes: newVotes, userVoted: newUserVoted }
+              return { ...song, votes: newVotes, userVoted: newUserVoted };
             }
-            return song
+            return song;
           })
-          .sort((a, b) => b.votes - a.votes), // Sort by votes descending
-    )
-  }
+          .sort((a, b) => b.votes - a.votes) // Sort by votes descending
+      );
+    } catch (error) {
+      console.error('Error voting:', error);
+    }
+  };
 
   const handleSubmitMusic = async () => {
     if (!musicPreview) return
@@ -324,7 +399,41 @@ export default function Dashboard() {
     setIsSubmitting(true)
 
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const response = await fetch("/api/streams", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        creatorId: musicPreview.creatorId, 
+        url: musicPreview.url,
+        // title: musicPreview.title,
+        // artist: musicPreview.artist,
+        // duration: musicPreview.duration,
+        // type: musicPreview.platform,
+        // extractedId: musicPreview.platform === "youtube" ? musicPreview.videoId : musicPreview.spotifyId,
+        // bigImg: musicPreview.thumbnail || musicPreview.albumArt, // Use thumbnail for YouTube, album art for Spotify
+      }),
+    });
+    // Handle response
+    const { id } = await response.json();
+
+    try {
+      const response = await fetch(`/api/streams/upvote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          streamId: id.toString()
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Vote failed:', response.status);
+        return;
+      }
+
 
     const newSong = {
       id: Date.now(),
@@ -343,13 +452,17 @@ export default function Dashboard() {
         }),
       votes: 1, // Start with 1 vote from submitter
       userVoted: "up" as const,
-      submittedBy: "currentUser",
+      submittedBy: musicPreview.creatorId || "anonymous", 
     }
 
     setQueue((prevQueue) => [...prevQueue, newSong].sort((a, b) => b.votes - a.votes))
     setMusicUrl("")
     setMusicPreview(null)
     setIsSubmitting(false)
+    } catch (error) {
+      console.error('Error submitting music:', error)
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -565,11 +678,17 @@ export default function Dashboard() {
                       <div className="flex items-center space-x-3 mt-1">
                         <div className="flex items-center space-x-1">
                           {song.platform === "spotify" ? (
-                            <FaSpotify className="w-3 h-3 text-green-500" />
+                          <FaSpotify className="w-3 h-3 text-green-500" />
                           ) : (
-                            <FaYoutube className="w-3 h-3 text-red-500" />
+                          <FaYoutube className="w-3 h-3 text-red-500" />
                           )}
-                          <span className="text-xs text-gray-500">{song.duration}</span>
+                          <span className="text-xs text-gray-500">
+                          {(() => {
+                            const minutes = Math.floor(Number(song.duration) / 60);
+                            const seconds = Number(song.duration) % 60;
+                            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                          })()}
+                          </span>
                         </div>
                         <span className="text-xs text-gray-400">by @{song.submittedBy}</span>
                       </div>
@@ -743,7 +862,7 @@ export default function Dashboard() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total Votes</span>
-                  <span className="font-semibold text-black">{queue.reduce((sum, song) => sum + song.votes, 0)}</span>
+                  <span className="font-semibold text-black">{queue.reduce((sum, song) => sum + Math.abs(song.votes), 0)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Songs in Queue</span>
