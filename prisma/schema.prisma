@@ -41,7 +41,7 @@ model Stream{
   downvotes      Downvote[]     
   createdAt      DateTime       @default(now())
   userId         String
-  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   submittedBy    String          @default("anonymous")
 }
 

@@ -25,14 +25,15 @@ const handler = NextAuth({
   secret: process.env.NEXTAUTH_SECRET ?? "secret",
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.log("Sign in callback", { user, account, profile });
+      console.log("🔐 Sign in attempt for:", user.email);
       
       if (!user.email) {
-        return false; // Prevent sign-in if email is not available
+        console.log("❌ No email provided");
+        return false;
       }
       
       try {
-        await prismaClient.user.upsert({
+        const result = await prismaClient.user.upsert({
           where: { email: user.email },
           update: {
             name: user.name || "",
@@ -43,22 +44,35 @@ const handler = NextAuth({
             name: user.name || "",
             image: user.image || "",
             provider: "GOOGLE",
-            createdAt: new Date(),
           }
         });
+        
+        console.log("User upserted successfully:", result.id);
+        return true;
       } catch (error) {
-        console.error("Error creating/updating user:", error);
-        return false; // Prevent sign-in if database operation fails
+        console.error("Database error during sign in:", error);
+        return false;
       }
-      
-      return true;
     },
     
     async session({ session, token }) {
       if (session.user?.email) {
         try {
-          const user = await prismaClient.user.findUnique({
+          // Use upsert to handle missing user scenario
+          const user = await prismaClient.user.upsert({
             where: { email: session.user.email },
+            update: {
+              // Update existing user with latest session data
+              name: session.user.name || "",
+              image: session.user.image || "",
+            },
+            create: {
+              // Create user if they don't exist (database was reset)
+              email: session.user.email,
+              name: session.user.name || "",
+              image: session.user.image || "",
+              provider: "GOOGLE",
+            },
             select: {
               id: true,
               email: true,
@@ -69,18 +83,18 @@ const handler = NextAuth({
             }
           });
           
-          if (user) {
-            session.user = {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              image: user.image,
-              provider: user.provider,
-              createdAt: user.createdAt,
-            };
-          }
+          // Update session with database user data
+          session.user = {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            provider: user.provider,
+            createdAt: user.createdAt,
+          };
+          
         } catch (error) {
-          console.error("Error fetching user in session callback:", error);
+          console.error("Error in session callback:", error);
         }
       }
       return session;

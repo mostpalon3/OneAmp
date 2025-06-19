@@ -291,7 +291,7 @@ useEffect(() => {
         fetchYouTubeVideoPreview(musicUrl)
           .then((videoData) => {
             setMusicPreview({
-              creatorId:"bf9cda8f-aabc-4236-8d6b-ebb362574d62",
+              creatorId:"463c420a-4896-4c30-b23e-858a03d5db32",
               platform: "youtube",
               videoId,
               title: videoData.title,
@@ -398,70 +398,76 @@ useEffect(() => {
 
     setIsSubmitting(true)
 
-    // Simulate API call
-    const response = await fetch("/api/streams", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        creatorId: musicPreview.creatorId, 
-        url: musicPreview.url,
-        // title: musicPreview.title,
-        // artist: musicPreview.artist,
-        // duration: musicPreview.duration,
-        // type: musicPreview.platform,
-        // extractedId: musicPreview.platform === "youtube" ? musicPreview.videoId : musicPreview.spotifyId,
-        // bigImg: musicPreview.thumbnail || musicPreview.albumArt, // Use thumbnail for YouTube, album art for Spotify
-      }),
-    });
-    // Handle response
-    const { id } = await response.json();
-
     try {
-      const response = await fetch(`/api/streams/upvote`, {
+      // Simulate API call
+      const response = await fetch("/api/streams", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          creatorId: musicPreview.creatorId, 
+          url: musicPreview.url,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit stream');
+      }
+
+      // Handle response
+      const responseData = await response.json();
+      const streamId = responseData.id;
+
+      if (!streamId) {
+        throw new Error('No stream ID returned from API');
+      }
+
+      // Auto-upvote the submitted stream
+      const voteResponse = await fetch(`/api/streams/upvote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          streamId: id.toString()
+          streamId: streamId
         }),
       });
 
-      if (!response.ok) {
-        console.error('Vote failed:', response.status);
-        return;
+      if (!voteResponse.ok) {
+        console.error('Vote failed:', voteResponse.status);
+        // Don't throw here as the stream was still created successfully
       }
 
+      const newSong = {
+        id: Date.now(),
+        title: musicPreview.title,
+        artist: musicPreview.artist,
+        duration: musicPreview.duration,
+        platform: musicPreview.platform,
+        ...(musicPreview.platform === "youtube"
+          ? {
+            videoId: musicPreview.videoId,
+            thumbnail: musicPreview.thumbnail,
+          }
+          : {
+            spotifyId: musicPreview.spotifyId,
+            albumArt: musicPreview.albumArt,
+          }),
+        votes: 1, // Start with 1 vote from submitter
+        userVoted: "up" as const,
+        submittedBy: musicPreview.creatorId || "anonymous", 
+      }
 
-    const newSong = {
-      id: Date.now(),
-      title: musicPreview.title,
-      artist: musicPreview.artist,
-      duration: musicPreview.duration,
-      platform: musicPreview.platform,
-      ...(musicPreview.platform === "youtube"
-        ? {
-          videoId: musicPreview.videoId,
-          thumbnail: musicPreview.thumbnail,
-        }
-        : {
-          spotifyId: musicPreview.spotifyId,
-          albumArt: musicPreview.albumArt,
-        }),
-      votes: 1, // Start with 1 vote from submitter
-      userVoted: "up" as const,
-      submittedBy: musicPreview.creatorId || "anonymous", 
-    }
-
-    setQueue((prevQueue) => [...prevQueue, newSong].sort((a, b) => b.votes - a.votes))
-    setMusicUrl("")
-    setMusicPreview(null)
-    setIsSubmitting(false)
+      setQueue((prevQueue) => [...prevQueue, newSong].sort((a, b) => b.votes - a.votes))
+      setMusicUrl("")
+      setMusicPreview(null)
+      setIsSubmitting(false)
     } catch (error) {
       console.error('Error submitting music:', error)
       setIsSubmitting(false)
+      // Optionally show an error message to the user
+      setError('Failed to submit music. Please try again.')
     }
   }
 
