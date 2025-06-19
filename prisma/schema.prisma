@@ -17,9 +17,13 @@ datasource db {
 model User {
   id            String         @id @default(uuid())
   email         String         @unique
+  name          String         @default("")
+  image         String         @default("")
   provider      Provider
   streams       Stream[]
   upvotes       Upvote[]
+  downvotes     Downvote[]
+  createdAt     DateTime       @default(now())
 }
 
 model Stream{
@@ -31,14 +35,25 @@ model Stream{
   artist         String         @default("")
   smallImg       String         @default("")
   bigImg         String         @default("")
+  duration       String         @default("PT0M0S")
   active         Boolean        @default(true)
   upvotes        Upvote[]
+  downvotes      Downvote[]
+  createdAt      DateTime       @default(now())
   userId         String
   user           User           @relation(fields: [userId], references: [id])
   submittedBy    String          @default("anonymous")
 }
 
 model Upvote{
+  id            String         @id @default(uuid())
+  userId        String
+  streamId      String
+  user          User           @relation(fields: [userId], references: [id])
+  stream        Stream         @relation(fields: [streamId], references: [id])
+  @@unique([userId, streamId])
+}
+model Downvote{
   id            String         @id @default(uuid())
   userId        String
   streamId      String

@@ -196,8 +196,6 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchInitialStreams = async () => {
       const streams = await refreshStreams();
-      console.log("Initial streams fetched:", streams.streams);
-      console.log(streams.streams[0].type)
       if (streams) {
         // Transform the API data to match your queue structure
         const transformedStreams = streams.streams.map((stream: any) => ({
@@ -209,8 +207,8 @@ export default function Dashboard() {
           videoId: stream.extractedId,
           thumbnail: stream.smallImg,
           votes: stream._count.upvotes || 0,
-          userVoted: stream.hasUserVoted || null,
-          submittedBy: stream.submittedBy || "anonymous"
+          userVoted: stream.hasUserVoted == 1 ? "up" : stream.hasUserVoted == 0 ? "down" : null,
+          submittedBy: stream.userId || "anonymous"
         }));
         
         setQueue(transformedStreams);
@@ -220,12 +218,14 @@ export default function Dashboard() {
     fetchInitialStreams();
     
     const interval = setInterval(() => {
-      // refreshStreams();
+      refreshStreams();
     }, REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, []);
   console.log("Queue initialized:", queue)
+
+
 
   // Handle music URL input
   useEffect(() => {
@@ -279,7 +279,7 @@ export default function Dashboard() {
   }, [musicUrl])
 
   const handleVote = (songId: number, isUpvote: boolean) => {
-    fetch(`/api/streams/upvote/`, {
+    fetch(`/api/streams/${isUpvote?"upvote":"downvote"}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -547,7 +547,7 @@ export default function Dashboard() {
               <CardContent className="space-y-4">
                 {queue.map((song, index) => (
                   <div
-                    key={song.id}
+                    key={song.submittedBy + song.id}
                     className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center space-x-3">

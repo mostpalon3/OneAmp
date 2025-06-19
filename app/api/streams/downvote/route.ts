@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-const UpvoteSchema = z.object({
+const DownvoteSchema = z.object({
     streamId: z.string(),
 })
 
@@ -24,20 +24,50 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const data = UpvoteSchema.parse(await req.json());
-        await prismaClient.upvote.delete({
+        const data = DownvoteSchema.parse(await req.json());
+        
+        // Check if user has already voted
+        const existingVote = await prismaClient.upvote.findUnique({
             where: {
-               userId_streamId: { 
-                userId: user.id,
-                streamId: data.streamId
-            }
+                userId_streamId: {
+                    userId: user.id,
+                    streamId: data.streamId
+                }
             }
         });
+
+        if (existingVote) {
+            // User had upvoted, remove the upvote (this acts as a downvote)
+            await prismaClient.upvote.delete({
+                where: {
+                    userId_streamId: {
+                        userId: user.id,
+                        streamId: data.streamId
+                    }
+                }
+            });
+            
+            return NextResponse.json({
+                message: "Upvote removed (downvoted)",
+                action: "removed_upvote"
+            }, {
+                status: 200
+            });
+        } else {
+            // User hasn't voted, this downvote doesn't affect the database
+            // since you're only tracking upvotes in the database
+            return NextResponse.json({
+                message: "No upvote to remove",
+                action: "no_action"
+            }, {
+                status: 200
+            });
+        }
     } catch (e) {
         return NextResponse.json({
-            message: "Error while upvoting the stream"
+            message: "Error while processing downvote"
         }, {
-            status: 403
+            status: 500
         }); 
     }
 }
