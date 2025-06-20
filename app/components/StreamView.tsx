@@ -27,10 +27,10 @@ import { BiMusic, BiTrendingUp } from "react-icons/bi"
 import { HiOutlineSparkles, HiOutlineFire } from "react-icons/hi"
 import { AppBar } from "../components/AppBar"
 import { handleShare } from "../components/HandleShare"
-
+import { SpotifyPlayer } from "./SpotifyPlayer"
+import { YouTubePlayer } from "./YouTubePlayer"
 
 const REFRESH_INTERVAL_MS = 10 * 1000 // 10 seconds
-
 
 // Mock data for current playing song
 const currentSong = {
@@ -261,8 +261,6 @@ export default function StreamView(
     return () => clearInterval(interval);
   }, []);
 
-
-  // Handle music URL input
   // Helper function to format duration from seconds to MM:SS or HH:MM:SS
 function formatDuration(seconds: number): string {
   if (!seconds || seconds === 0) return '0:00'
@@ -595,100 +593,16 @@ useEffect(() => {
                 </div>
               </CardHeader>
               <CardContent>
-                {currentPlaying === "spotify" ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <img
-                        src={currentSong.albumArt || "/placeholder.svg"}
-                        alt={currentSong.title}
-                        className="w-20 h-20 rounded-lg object-cover"
-                      />
-                      <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-black mb-1">{currentSong.title}</h3>
-                        <p className="text-gray-600 mb-2">{currentSong.artist}</p>
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-2">
-                            <FaSpotify className="w-4 h-4 text-green-500" />
-                            <span className="text-sm text-gray-500">Spotify</span>
-                          </div>
-                          <div className="flex items-center space-x-1 text-gray-500">
-                            <FaHeart className="w-4 h-4" />
-                            <span className="text-sm">{currentSong.votes}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-gray-500 mb-1">
-                          {currentSong.currentTime} / {currentSong.duration}
-                        </div>
-                        <div className="w-24 h-1 bg-gray-200 rounded-full">
-                          <div className="w-1/2 h-1 bg-green-500 rounded-full"></div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Spotify Embed */}
-                    <div className="w-full">
-                      <iframe
-                        src={`https://open.spotify.com/embed/track/${currentSong.spotifyId}?utm_source=generator&theme=0`}
-                        width="100%"
-                        height="152"
-                        frameBorder="0"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        className="rounded-lg"
-                      ></iframe>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <img
-                        src={currentVideo.thumbnail || "/placeholder.svg"}
-                        alt={currentVideo.title}
-                        className="w-20 h-20 rounded-lg object-cover"
-                      />
-                      <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-black mb-1">{currentVideo.title}</h3>
-                        <p className="text-gray-600 mb-2">{currentVideo.artist}</p>
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-2">
-                            <FaYoutube className="w-4 h-4 text-red-500" />
-                            <span className="text-sm text-gray-500">YouTube</span>
-                          </div>
-                          <div className="flex items-center space-x-1 text-gray-500">
-                            <FaHeart className="w-4 h-4" />
-                            <span className="text-sm">{currentVideo.votes}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-gray-500 mb-1">
-                          {currentVideo.currentTime} / {
-                          (() => {
-                            const minutes = Math.floor(Number(currentVideo.duration) / 60);
-                            const seconds = Number(currentVideo.duration) % 60;
-                            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                          })()
-                          }
-                        </div>
-                        <div className="w-24 h-1 bg-gray-200 rounded-full">
-                          <div className="w-1/3 h-1 bg-red-500 rounded-full"></div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* YouTube Embed */}
-                    <div className="aspect-video w-full">
-                      <iframe
-                        src={`https://www.youtube.com/embed/${currentVideo.videoId}?autoplay=1&mute=1`}
-                        title={currentVideo.title}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full rounded-lg"
-                      ></iframe>
-                    </div>
-                  </div>
-                )}
+                <SpotifyPlayer 
+                  currentSong={currentSong}
+                  isActive={currentPlaying === "spotify"}
+                  onToggle={() => setCurrentPlaying("spotify")}
+                />
+                <YouTubePlayer 
+                  currentVideo={currentVideo}
+                  isActive={currentPlaying === "youtube"}
+                  onToggle={() => setCurrentPlaying("youtube")}
+                />
               </CardContent>
             </Card>
 
