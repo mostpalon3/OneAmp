@@ -3,10 +3,10 @@
 import StreamView from "../components/StreamView"
 
 
-const creatorId = "463c420a-4896-4c30-b23e-858a03d5db32"
+const creatorId = "9cc8fa2c-ee9f-41cc-a741-30670782564e"
 
 
 
 export default function Dashboard() {
-    return <StreamView creatorId={creatorId} />;
+    return <StreamView creatorId={creatorId} playVideo={true}/>;
 }

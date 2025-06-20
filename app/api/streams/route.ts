@@ -170,6 +170,7 @@ export async function POST(req: NextRequest) {
         bigImg: thumbnails[thumbnails.length - 1].url ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1d1cc99fa72.jpg",
         duration: parseDuration(res.duration),
         artist: res.channelTitle,
+        played: false,
         //  submittedBy: session?.user?.name ?? "anonymous",
       }
     });
@@ -212,29 +213,56 @@ export async function GET(req: NextRequest) {
       status: 403
     });
   }
-  const streams = await prismaClient.stream.findMany({
-    where: {
-      userId: creatorId
+const [streams,activeStream] = await Promise.all([prismaClient.stream.findMany({
+  where: {
+    userId: creatorId,
+    played: false
+  },
+  include: {
+    _count: {
+      select: {
+        upvotes: true,
+        downvotes: true,
+      }
     },
-    include: {
-      _count: {
-        select: {
-          upvotes: true,
-          downvotes: true,
-        }
-      },
-      upvotes: {
-        where: {
-          userId: user.id
-        }
-      },
-      downvotes: {
-        where: {
-          userId: user.id
+    upvotes: {
+      where: {
+        userId: user.id
+      }
+    },
+    downvotes: {
+      where: {
+        userId: user.id
+      }
+    }
+  }
+}), prismaClient.currentStream.findFirst({
+  where: {
+    userId: creatorId
+  },
+  include:{
+    stream: {
+      include: {
+        _count: {
+          select: {
+            upvotes: true,
+            downvotes: true,
+          }
+        },
+        upvotes: {
+          where: {
+            userId: user.id
+          }
+        },
+        downvotes: {
+          where: {
+            userId: user.id
+          }
         }
       }
     }
-  })
+  }
+})])
 
   const streamsWithVotes = streams.map(stream => ({
     ...stream,
@@ -242,8 +270,13 @@ export async function GET(req: NextRequest) {
     userVoted: stream.upvotes.length > 0 ? "up" :
       stream.downvotes.length > 0 ? "down" : null
   }));
+  const activeStreamWithVotes = activeStream?.stream ? {
+    ...activeStream.stream,
+    votes: activeStream.stream._count.upvotes - activeStream.stream._count.downvotes,
+  } : null;
 
   return NextResponse.json({
-    streams: streamsWithVotes
+    streams: streamsWithVotes,
+    activeStream: activeStreamWithVotes
   });
 }

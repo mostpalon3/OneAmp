@@ -83,7 +83,7 @@ export function AppBar(creatorId: string) {
   const pathname = usePathname();
   
   const isHomePage = pathname === "/";
-  const isDashboard = pathname === "/dashboard";
+  const isDashboard = pathname === "/dashboard" || pathname.startsWith("/creator/");
   const isAuthenticated = Boolean(session.data?.user);
 
   return (

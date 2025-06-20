@@ -21,12 +21,12 @@ import {
   FaCheck,
   FaTimes,
   FaMusic,
+  FaPlay,
 } from "react-icons/fa"
 import { BiMusic, BiTrendingUp } from "react-icons/bi"
 import { HiOutlineSparkles, HiOutlineFire } from "react-icons/hi"
 import { AppBar } from "../components/AppBar"
 import { handleShare } from "../components/HandleShare"
-import { any } from "zod"
 
 
 const REFRESH_INTERVAL_MS = 10 * 1000 // 10 seconds
@@ -46,7 +46,7 @@ const currentSong = {
 }
 
 // Mock data for YouTube current video
-const currentVideo = {
+const currentVideoData = {
   id: 1,
   title: "Dua Lipa - Levitating (Official Music Video)",
   artist: "Dua Lipa",
@@ -169,7 +169,12 @@ const getSpotifyTrackInfo = async (trackId: string) => {
   }
 }
 
-export default function StreamView({creatorId}:{creatorId:string}) {
+export default function StreamView(
+    {
+        creatorId,
+        playVideo = false
+    }:{creatorId:string,
+        playVideo:boolean}) {
   const [musicUrl, setMusicUrl] = useState("")
   const [musicPreview, setMusicPreview] = useState<any>(null)
   const [queue, setQueue] = useState(initialQueue)
@@ -177,6 +182,7 @@ export default function StreamView({creatorId}:{creatorId:string}) {
   const [detectedPlatform, setDetectedPlatform] = useState<"youtube" | "spotify" | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentPlaying, setCurrentPlaying] = useState<"spotify" | "youtube">("youtube")
+  const [currentVideo, setCurrentVideo] = useState(currentVideoData)
   const [isLoading, setIsLoading] = useState(false)  
   const [error, setError] = useState<string | null>(null)
 
@@ -198,8 +204,7 @@ export default function StreamView({creatorId}:{creatorId:string}) {
     }
   }
 
-  useEffect(() => {
-    const fetchInitialStreams = async () => {
+  const fetchInitialStreams = async () => {
       const streams = await refreshStreams();
       if (streams) {
         // Transform the API data to match your queue structure
@@ -226,13 +231,29 @@ export default function StreamView({creatorId}:{creatorId:string}) {
           // Secondary sort by creation time or ID for stable sorting
           return a.id.localeCompare(b.id);
         });
+        console.log("Sorted streams:", streams.activeStream);
+        const currentTransformedStream = streams.activeStream ? {
+            id: streams.activeStream.id,
+            title: streams.activeStream.title || "Unknown Title",
+            artist: streams.activeStream.artist || "Unknown Artist",
+            duration: streams.activeStream.duration || "0:00",
+            currentTime: "0:00",
+            platform: streams.activeStream.type?.toLowerCase() || 'youtube',
+            videoId: streams.activeStream.extractedId,
+            thumbnail: streams.activeStream.smallImg,
+            votes: streams.activeStream.votes ,
+            submittedBy: streams.activeStream.submittedBy || streams.activeStream.userId || "anonymous"
+        } : currentVideoData; // Use fallback instead of null
         
         setQueue(sortedStreams);
+        setCurrentPlaying(streams.activeStream?.type?.toLowerCase());
+        setCurrentVideo(currentTransformedStream);
+        console.log("Initial streams fetched and transformed:", currentTransformedStream);
       }
     };
-    
-        fetchInitialStreams();
-    
+
+  useEffect(() => {
+    fetchInitialStreams();
     const interval = setInterval(() => {
       fetchInitialStreams();
     }, REFRESH_INTERVAL_MS);
@@ -642,7 +663,13 @@ useEffect(() => {
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-500 mb-1">
-                          {currentVideo.currentTime} / {currentVideo.duration}
+                          {currentVideo.currentTime} / {
+                          (() => {
+                            const minutes = Math.floor(Number(currentVideo.duration) / 60);
+                            const seconds = Number(currentVideo.duration) % 60;
+                            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                          })()
+                          }
                         </div>
                         <div className="w-24 h-1 bg-gray-200 rounded-full">
                           <div className="w-1/3 h-1 bg-red-500 rounded-full"></div>
@@ -869,6 +896,50 @@ useEffect(() => {
                 </Tabs>
               </CardContent>
             </Card>
+
+            {/* Play next button to hit the next activesong */}
+            {playVideo&&<Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Play Next</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={async () => {
+                      setIsLoading(true);
+                      try {
+                        const response = await fetch(`/api/streams/nextstream`);
+                        if (!response.ok) {
+                          throw new Error('Failed to play next song');
+                        }
+                        const data = await response.json();
+                        console.log('Next song played:', data);
+                        // Optionally, refresh the queue or current playing song
+                        await fetchInitialStreams();
+                      } catch (error) {
+                        console.error('Error playing next song:', error);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }
+                    }
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <FaPlay className="w-4 h-4 mr-2" />
+                        Play Next
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+            </Card>}
 
             {/* Stream Stats */}
             <Card className="border-gray-200">
