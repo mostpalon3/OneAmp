@@ -26,6 +26,7 @@ import { BiMusic, BiTrendingUp } from "react-icons/bi"
 import { HiOutlineSparkles, HiOutlineFire } from "react-icons/hi"
 import { AppBar } from "../components/AppBar"
 import { handleShare } from "../components/HandleShare"
+import { any } from "zod"
 
 
 const REFRESH_INTERVAL_MS = 10 * 1000 // 10 seconds
@@ -211,13 +212,22 @@ export default function StreamView({creatorId}:{creatorId:string}) {
           videoId: stream.extractedId,
           thumbnail: stream.smallImg,
           // Calculate votes as upvotes - downvotes
-          votes: (stream._count?.upvotes || 0) - (stream._count?.downvotes || 0),
-          // Determine user vote status
+          votes: stream.votes || ((stream._count?.upvotes || 0) - (stream._count?.downvotes || 0)),
+          // Determine user vote status - this should come from your API
           userVoted: stream.userVoted || null,
-          submittedBy: stream.userId || "anonymous"
+          submittedBy: stream.submittedBy || stream.userId || "anonymous"
         }));
         
-        setQueue(transformedStreams);
+        // Sort by votes (highest first) and maintain stable sorting
+        const sortedStreams = transformedStreams.sort((a: any, b: any) => {
+          if (b.votes !== a.votes) {
+            return b.votes - a.votes;
+          }
+          // Secondary sort by creation time or ID for stable sorting
+          return a.id.localeCompare(b.id);
+        });
+        
+        setQueue(sortedStreams);
       }
     };
     
@@ -229,8 +239,7 @@ export default function StreamView({creatorId}:{creatorId:string}) {
 
     return () => clearInterval(interval);
   }, []);
-  
-  console.log("Queue initialized:", queue)
+
 
   // Handle music URL input
   // Helper function to format duration from seconds to MM:SS or HH:MM:SS
@@ -342,7 +351,6 @@ useEffect(() => {
 }, [musicUrl])
 
   const handleVote = async (songId: number | string, isUpvote: boolean) => {
-    // Add validation to prevent the error
     if (!songId) {
       console.error('handleVote called with undefined songId');
       return;
@@ -355,7 +363,7 @@ useEffect(() => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          streamId: String(songId) // Use String() instead of toString() for better safety
+          streamId: String(songId)
         }),
       });
 
@@ -373,12 +381,15 @@ useEffect(() => {
               let newUserVoted = song.userVoted;
 
               if (song.userVoted === (isUpvote ? "up" : "down")) {
+                // User is removing their vote
                 newVotes = isUpvote ? newVotes - 1 : newVotes + 1;
                 newUserVoted = null;
               } else if (song.userVoted === null) {
+                // User is voting for the first time
                 newVotes = isUpvote ? newVotes + 1 : newVotes - 1;
                 newUserVoted = isUpvote ? "up" : "down";
               } else {
+                // User is switching their vote
                 newVotes = isUpvote ? newVotes + 2 : newVotes - 2;
                 newUserVoted = isUpvote ? "up" : "down";
               }
@@ -387,7 +398,12 @@ useEffect(() => {
             }
             return song;
           })
-          .sort((a, b) => b.votes - a.votes)
+          .sort((a, b) => {
+            if (b.votes !== a.votes) {
+              return b.votes - a.votes;
+            }
+            return String(a.id).localeCompare(String(b.id));
+          })
       );
     } catch (error) {
       console.error('Error voting:', error);
@@ -401,7 +417,6 @@ useEffect(() => {
     setIsSubmitting(true)
 
     try {
-      // Submit to your API with the correct data
       const response = await fetch("/api/streams", {
         method: "POST",
         headers: {
@@ -409,7 +424,7 @@ useEffect(() => {
         },
         body: JSON.stringify({
           creatorId: creatorId,
-          url: musicUrl, // Use musicUrl instead of musicPreview.url
+          url: musicUrl,
         }),
       });
 
@@ -440,7 +455,7 @@ useEffect(() => {
       }
 
       const newSong = {
-        id: streamId, // Use the actual stream ID from the API response
+        id: streamId,
         title: responseData.title || musicPreview.title,
         artist: responseData.artist || musicPreview.artist,
         duration: formatDuration(responseData.duration) || musicPreview.duration,
@@ -456,10 +471,19 @@ useEffect(() => {
           }),
         votes: 1,
         userVoted: "up" as const,
-        submittedBy: musicPreview.creatorId || "anonymous", 
+        submittedBy: "You",
       }
 
-      setQueue((prevQueue) => [...prevQueue, newSong].sort((a, b) => b.votes - a.votes))
+      // Apply the same sorting logic
+      setQueue((prevQueue) => 
+        [...prevQueue, newSong].sort((a, b) => {
+          if (b.votes !== a.votes) {
+            return b.votes - a.votes;
+          }
+          return String(a.id).localeCompare(String(b.id));
+        })
+      )
+      
       setMusicUrl("")
       setMusicPreview(null)
       setIsValidUrl(null)
