@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Sort by net score (upvotes - downvotes) in descending order
-        const mostUpVotedStream = streams.sort((a, b) => {
+        const mostUpVotedStream = streams.sort((a: any, b: any) => {
             const aNetScore = a._count.upvotes - a._count.downvotes;
             const bNetScore = b._count.upvotes - b._count.downvotes;
             return bNetScore - aNetScore;
