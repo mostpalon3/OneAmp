@@ -1,256 +1,91 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  FaSpotify,
-  FaYoutube,
-  FaArrowUp,
-  FaArrowDown,
-  FaUsers,
-  FaClock,
-  FaPlus,
-  FaHeart,
-  FaShare,
-  FaEye,
-  FaCheck,
-  FaTimes,
-  FaMusic,
-  FaPlay,
-} from "react-icons/fa"
-import { BiMusic, BiTrendingUp } from "react-icons/bi"
-import { HiOutlineSparkles, HiOutlineFire } from "react-icons/hi"
-import { AppBar } from "../components/AppBar"
-import { handleShare } from "../components/HandleShare"
-import { SpotifyPlayer } from "./SpotifyPlayer"
-import { YouTubePlayer } from "./YouTubePlayer"
+import { AppBar } from "./AppBar"
+import { StreamHeader } from "./stream/StreamHeader"
+import { NowPlaying } from "./stream/NowPlaying"
+import { QueueList } from "./stream/QueueList"
+import { PlayNextButton } from "./stream/PlayNextButton"
+import { StreamStats } from "./stream/StreamStats"
+import { QuickActions } from "./stream/QuickActions"
+import { Song, CurrentVideo, StreamStats as StreamStatsType } from "@/lib/types/stream-types"
+import { refreshStreams, voteOnStream } from "@/lib/utils/api-utils"
+import { REFRESH_INTERVAL_MS } from "@/lib/constants/stream-constants"
+import { AddMusicForm } from "./stream/AddMusicForm"
 
-const REFRESH_INTERVAL_MS = 10 * 1000 // 10 seconds
-
-// Mock data for current playing song
-const currentSong = {
-  id: 1,
-  title: "Blinding Lights",
-  artist: "The Weeknd",
-  duration: "3:20",
-  currentTime: "1:45",
-  platform: "spotify",
-  albumArt: "/placeholder.svg?height=300&width=300",
-  votes: 234,
-  spotifyId: "0VjIjW4GlUZAMYd2vXMi3b", // Example Spotify track ID
-}
-
-// Mock data for YouTube current video
-const currentVideoData = {
-  id: 1,
-  title: "Dua Lipa - Levitating (Official Music Video)",
-  artist: "Dua Lipa",
-  duration: "3:23",
-  currentTime: "1:12",
-  platform: "youtube",
-  videoId: "TUVcZfQe-Kw", // Example YouTube video ID
-  thumbnail: "https://img.youtube.com/vi/TUVcZfQe-Kw/maxresdefault.jpg",
-  votes: 189,
-}
-
-// Mock queue data
-const initialQueue = [
-  {
-    id: 2,
-    title: "Watermelon Sugar",
-    artist: "Harry Styles",
-    duration: "2:54",
-    platform: "youtube",
-    videoId: "E07s5ZYygMg",
-    thumbnail: "https://img.youtube.com/vi/E07s5ZYygMg/maxresdefault.jpg",
-    votes: 189,
-    userVoted: "up",
-    submittedBy: "user123",
-  },
-  {
-    id: 3,
-    title: "Good 4 U",
-    artist: "Olivia Rodrigo",
-    duration: "2:58",
-    platform: "youtube",
-    videoId: "gNi_6U5Pm_o",
-    thumbnail: "https://img.youtube.com/vi/gNi_6U5Pm_o/maxresdefault.jpg",
-    votes: 156,
-    userVoted: null,
-    submittedBy: "musiclover",
-  },
-  {
-    id: 4,
-    title: "Anti-Hero",
-    artist: "Taylor Swift",
-    duration: "3:20",
-    platform: "spotify",
-    spotifyId: "0V3wPSX9ygBnCm8psDIegu",
-    albumArt: "/placeholder.svg?height=60&width=60",
-    votes: 142,
-    userVoted: "down",
-    submittedBy: "swiftie",
-  },
-  {
-    id: 5,
-    title: "Stay",
-    artist: "The Kid LAROI & Justin Bieber",
-    duration: "2:21",
-    platform: "youtube",
-    videoId: "kTJczUoc26U",
-    thumbnail: "https://img.youtube.com/vi/kTJczUoc26U/maxresdefault.jpg",
-    votes: 98,
-    userVoted: null,
-    submittedBy: "popfan",
-  },
-  {
-    id: 6,
-    title: "Flowers",
-    artist: "Miley Cyrus",
-    duration: "3:20",
-    platform: "spotify",
-    spotifyId: "0yLdNVWF3Srea0uzk55zFn",
-    albumArt: "/placeholder.svg?height=60&width=60",
-    votes: 87,
-    userVoted: null,
-    submittedBy: "musicfan",
-  },
-]
-
-// Function to extract YouTube video ID from URL
-const extractYouTubeId = (url: string): string | null => {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-  const match = url.match(regExp)
-  return match && match[2].length === 11 ? match[2] : null
-}
-
-// Function to extract Spotify track ID from URL
-const extractSpotifyId = (url: string): string | null => {
-  const regExp = /^https?:\/\/(?:open\.)?spotify\.com\/track\/([a-zA-Z0-9]+)(\?.*)?$/
-  const match = url.match(regExp)
-  return match ? match[1] : null
-}
-
-// Function to detect platform from URL
-const detectPlatform = (url: string): "youtube" | "spotify" | null => {
-  if (url.includes("youtube.com") || url.includes("youtu.be")) {
-    return "youtube"
-  }
-  if (url.includes("spotify.com")) {
-    return "spotify"
-  }
-  return null
-}
-
-// Function to get YouTube video info (mock)
-const getYouTubeVideoInfo = async (videoId: string) => {
-  // In a real app, you'd call YouTube API here
-  return {
-    title: "Sample YouTube Video",
-    artist: "Sample Artist",
-    duration: "3:45",
-    thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-  }
-}
-
-// Function to get Spotify track info (mock)
-const getSpotifyTrackInfo = async (trackId: string) => {
-  // In a real app, you'd call Spotify API here
-  return {
-    title: "Sample Spotify Track",
-    artist: "Sample Artist",
-    duration: "3:20",
-    albumArt: "/placeholder.svg?height=300&width=300",
-  }
-}
-
-export default function StreamView(
-    {
-        creatorId,
-        playVideo = false
-    }:{creatorId:string,
-        playVideo:boolean}) {
-  const [musicUrl, setMusicUrl] = useState("")
-  const [musicPreview, setMusicPreview] = useState<any>(null)
-  const [queue, setQueue] = useState(initialQueue)
-  const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null)
-  const [detectedPlatform, setDetectedPlatform] = useState<"youtube" | "spotify" | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export default function StreamView({
+  creatorId,
+  playVideo = false
+}: {
+  creatorId: string,
+  playVideo: boolean
+}) {
+  const [queue, setQueue] = useState<Song[]>([])
   const [currentPlaying, setCurrentPlaying] = useState<"spotify" | "youtube">("youtube")
-  const [currentVideo, setCurrentVideo] = useState(currentVideoData)
-  const [isLoading, setIsLoading] = useState(false)  
-  const [error, setError] = useState<string | null>(null)
-
-  async function refreshStreams() {
-    try {
-      const res = await fetch("/api/streams/?creatorId=" + creatorId);
-      
-      if (!res.ok) {
-        console.warn("Failed to fetch streams:", res.status);
-        return null;
-      }
-      
-      const data = await res.json();
-      console.log("Streams refreshed:", data);
-      return data;
-    } catch (error) {
-      console.error("Error refreshing streams:", error);
-      return null;
-    }
-  }
+  const [currentVideo, setCurrentVideo] = useState<CurrentVideo>({
+    id: 0,
+    title: "No tracks available",
+    artist: "Add a song to get started",
+    duration: "0:00",
+    currentTime: "0:00",
+    platform: "youtube",
+    videoId: "",
+    thumbnail: "/placeholder.svg",
+    votes: 0,
+  })
+  const [isLoading, setIsLoading] = useState(false)
 
   const fetchInitialStreams = async () => {
-      const streams = await refreshStreams();
-      if (streams) {
-        // Transform the API data to match your queue structure
-        const transformedStreams = streams.streams.map((stream: any) => ({
-          id: stream.id,
-          title: stream.title || "Unknown Title",
-          artist: stream.artist || "Unknown Artist", 
-          duration: stream.duration || "0:00",
-          platform: stream.type.toLowerCase(),
-          videoId: stream.extractedId,
-          thumbnail: stream.smallImg,
-          // Calculate votes as upvotes - downvotes
-          votes: stream.votes || ((stream._count?.upvotes || 0) - (stream._count?.downvotes || 0)),
-          // Determine user vote status - this should come from your API
-          userVoted: stream.userVoted || null,
-          submittedBy: stream.submittedBy || stream.userId || "anonymous"
-        }));
-        
-        // Sort by votes (highest first) and maintain stable sorting
-        const sortedStreams = transformedStreams.sort((a: any, b: any) => {
-          if (b.votes !== a.votes) {
-            return b.votes - a.votes;
-          }
-          // Secondary sort by creation time or ID for stable sorting
-          return a.id.localeCompare(b.id);
-        });
-        console.log("Sorted streams:", streams.activeStream);
-        const currentTransformedStream = streams.activeStream ? {
-            id: streams.activeStream.id,
-            title: streams.activeStream.title || "Unknown Title",
-            artist: streams.activeStream.artist || "Unknown Artist",
-            duration: streams.activeStream.duration || "0:00",
-            currentTime: "0:00",
-            platform: streams.activeStream.type?.toLowerCase() || 'youtube',
-            videoId: streams.activeStream.extractedId,
-            thumbnail: streams.activeStream.smallImg,
-            votes: streams.activeStream.votes ,
-            submittedBy: streams.activeStream.submittedBy || streams.activeStream.userId || "anonymous"
-        } : currentVideoData; // Use fallback instead of null
-        
-        setQueue(sortedStreams);
-        setCurrentPlaying(streams.activeStream?.type?.toLowerCase());
-        setCurrentVideo(currentTransformedStream);
-        console.log("Initial streams fetched and transformed:", currentTransformedStream);
-      }
-    };
+    const streams = await refreshStreams(creatorId);
+    if (streams) {
+      const transformedStreams = streams.streams.map((stream: any) => ({
+        id: stream.id,
+        title: stream.title || "Unknown Title",
+        artist: stream.artist || "Unknown Artist", 
+        duration: stream.duration || "0:00",
+        platform: stream.type.toLowerCase(),
+        videoId: stream.extractedId,
+        thumbnail: stream.smallImg,
+        votes: stream.votes || ((stream._count?.upvotes || 0) - (stream._count?.downvotes || 0)),
+        userVoted: stream.userVoted || null,
+        submittedBy: stream.submittedBy || stream.userId || "anonymous"
+      }));
+      
+      const sortedStreams = transformedStreams.sort((a: any, b: any) => {
+        if (b.votes !== a.votes) {
+          return b.votes - a.votes;
+        }
+        return a.id.localeCompare(b.id);
+      });
+
+      const currentTransformedStream = streams.activeStream ? {
+          id: streams.activeStream.id,
+          title: streams.activeStream.title || "Unknown Title",
+          artist: streams.activeStream.artist || "Unknown Artist",
+          duration: streams.activeStream.duration || "0:00",
+          currentTime: "0:00",
+          platform: streams.activeStream.type?.toLowerCase() || 'youtube',
+          videoId: streams.activeStream.extractedId,
+          thumbnail: streams.activeStream.smallImg,
+          votes: streams.activeStream.votes,
+          submittedBy: streams.activeStream.submittedBy || streams.activeStream.userId || "anonymous"
+      } : {
+        id: 0,
+        title: "No active stream",
+        artist: "Add songs to the queue",
+        duration: "0:00",
+        currentTime: "0:00",
+        platform: "youtube",
+        videoId: "",
+        thumbnail: "/placeholder.svg",
+        votes: 0,
+      };
+      
+      setQueue(sortedStreams);
+      setCurrentPlaying(streams.activeStream?.type?.toLowerCase() || "youtube");
+      setCurrentVideo(currentTransformedStream);
+    }
+  };
 
   useEffect(() => {
     fetchInitialStreams();
@@ -259,115 +94,7 @@ export default function StreamView(
     }, REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, []);
-
-  // Helper function to format duration from seconds to MM:SS or HH:MM:SS
-function formatDuration(seconds: number): string {
-  if (!seconds || seconds === 0) return '0:00'
-  
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const remainingSeconds = seconds % 60
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
-  } else {
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-  }
-}
-
-// Helper function to call your preview API
-async function fetchYouTubeVideoPreview(url: string) {
-  try {
-    const response = await fetch('/api/streams/preview', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: url,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'Failed to fetch video details')
-    }
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Preview API call failed:', error)
-    throw error
-  }
-}
-
-// Your updated useEffect
-useEffect(() => {
-  if (musicUrl) {
-    const platform = detectPlatform(musicUrl)
-    setDetectedPlatform(platform)
-
-    if (platform === "youtube") {
-      const videoId = extractYouTubeId(musicUrl)
-      if (videoId) {
-        setIsValidUrl(true)
-        setIsLoading(true) // Start loading
-        setError(null) // Clear any previous errors
-        
-        fetchYouTubeVideoPreview(musicUrl)
-          .then((videoData) => {
-            setMusicPreview({
-              creatorId,
-              platform: "youtube",
-              videoId,
-              title: videoData.title,
-              artist: videoData.artist,
-              duration: formatDuration(videoData.duration), // Convert seconds to MM:SS format
-              thumbnail: videoData.bigImg,
-              url: musicUrl,
-            })
-            setIsLoading(false)
-          })
-          .catch((error) => {
-            console.error('Error fetching YouTube video details:', error)
-            setIsValidUrl(false)
-            setMusicPreview(null)
-            setIsLoading(false)
-            setError('Failed to fetch video details. Please check the URL and try again.')
-          })
-      } else {
-        setIsValidUrl(false)
-        setMusicPreview(null)
-      }
-    } else if (platform === "spotify") {
-      const trackId = extractSpotifyId(musicUrl)
-      if (trackId) {
-        setIsValidUrl(true)
-        // Mock track info - in real app, fetch from Spotify API
-        setMusicPreview({
-          platform: "spotify",
-          spotifyId: trackId,
-          title: "Sample Spotify Track",
-          artist: "Sample Artist",
-          duration: "3:20",
-          albumArt: "/placeholder.svg?height=300&width=300",
-        })
-      } else {
-        setIsValidUrl(false)
-        setMusicPreview(null)
-      }
-    } else {
-      setIsValidUrl(false)
-      setMusicPreview(null)
-    }
-  } else {
-    setIsValidUrl(null)
-    setDetectedPlatform(null)
-    setMusicPreview(null)
-    setError(null) // Clear error when URL is cleared
-  }
-}, [musicUrl])
+  }, [creatorId]);
 
   const handleVote = async (songId: number | string, isUpvote: boolean) => {
     if (!songId) {
@@ -376,22 +103,8 @@ useEffect(() => {
     }
 
     try {
-      const response = await fetch(`/api/streams/${isUpvote ? "upvote" : "downvote"}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          streamId: String(songId)
-        }),
-      });
+      await voteOnStream(String(songId), isUpvote);
 
-      if (!response.ok) {
-        console.error('Vote failed:', response.status);
-        return;
-      }
-
-      // Update local state optimistically
       setQueue((prevQueue) =>
         prevQueue
           .map((song) => {
@@ -400,15 +113,12 @@ useEffect(() => {
               let newUserVoted = song.userVoted;
 
               if (song.userVoted === (isUpvote ? "up" : "down")) {
-                // User is removing their vote
                 newVotes = isUpvote ? newVotes - 1 : newVotes + 1;
                 newUserVoted = null;
               } else if (song.userVoted === null) {
-                // User is voting for the first time
                 newVotes = isUpvote ? newVotes + 1 : newVotes - 1;
                 newUserVoted = isUpvote ? "up" : "down";
               } else {
-                // User is switching their vote
                 newVotes = isUpvote ? newVotes + 2 : newVotes - 2;
                 newUserVoted = isUpvote ? "up" : "down";
               }
@@ -429,480 +139,63 @@ useEffect(() => {
     }
   };
 
-  const handleSubmitMusic = async (e: any) => {
-    e.preventDefault()
-    if (!musicPreview) return
-
-    setIsSubmitting(true)
-
+  const handlePlayNext = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch("/api/streams", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          creatorId: creatorId,
-          url: musicUrl,
-        }),
-      });
-
+      const response = await fetch(`/api/streams/nextstream`);
       if (!response.ok) {
-        throw new Error('Failed to submit stream');
+        throw new Error('Failed to play next song');
       }
-
-      const responseData = await response.json();
-      const streamId = responseData.id;
-
-      if (!streamId) {
-        throw new Error('No stream ID returned from API');
-      }
-
-      // Auto-upvote the submitted stream
-      try {
-        await fetch(`/api/streams/upvote`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            streamId: streamId
-          }),
-        });
-      } catch (voteError) {
-        console.error('Auto-upvote failed:', voteError);
-      }
-
-      const newSong = {
-        id: streamId,
-        title: responseData.title || musicPreview.title,
-        artist: responseData.artist || musicPreview.artist,
-        duration: formatDuration(responseData.duration) || musicPreview.duration,
-        platform: musicPreview.platform,
-        ...(musicPreview.platform === "youtube"
-          ? {
-            videoId: responseData.extractedId || musicPreview.videoId,
-            thumbnail: responseData.smallImg || musicPreview.thumbnail,
-          }
-          : {
-            spotifyId: musicPreview.spotifyId,
-            albumArt: musicPreview.albumArt,
-          }),
-        votes: 1,
-        userVoted: "up" as const,
-        submittedBy: "You",
-      }
-
-      // Apply the same sorting logic
-      setQueue((prevQueue) => 
-        [...prevQueue, newSong].sort((a, b) => {
-          if (b.votes !== a.votes) {
-            return b.votes - a.votes;
-          }
-          return String(a.id).localeCompare(String(b.id));
-        })
-      )
-      
-      setMusicUrl("")
-      setMusicPreview(null)
-      setIsValidUrl(null)
-      setDetectedPlatform(null)
-      setError(null)
+      const data = await response.json();
+      console.log('Next song played:', data);
+      await fetchInitialStreams();
     } catch (error) {
-      console.error('Error submitting music:', error)
-      setError('Failed to submit music. Please try again.')
+      console.error('Error playing next song:', error);
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  // Add this useEffect to debug the queue
-useEffect(() => {
-  console.log('Current queue:', queue);
-  queue.forEach((song, index) => {
-    if (!song.id) {
-      console.error(`Song at index ${index} has no ID:`, song);
-    }
-  });
-}, [queue]);
+  const streamStats: StreamStatsType = {
+    totalVotes: queue.reduce((sum, song) => sum + Math.abs(song.votes), 0),
+    songsInQueue: queue.length,
+    youtubeVideos: queue.filter((song) => song.platform === "youtube").length,
+    spotifyTracks: queue.filter((song) => song.platform === "spotify").length,
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       {AppBar(String(creatorId))}
 
       <div className="container mx-auto px-4 lg:px-6 py-6">
-        {/* Stream Info */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-4 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">DJ</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-black">DJ MixMaster's Stream</h1>
-              <p className="text-gray-600">Electronic • House • Progressive</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-6 text-sm text-gray-500">
-            <div className="flex items-center space-x-1">
-              <FaEye className="w-4 h-4" />
-              <span>1,247 viewers</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <FaClock className="w-4 h-4" />
-              <span>2h 34m streaming</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <BiTrendingUp className="w-4 h-4" />
-              <span>+15% engagement</span>
-            </div>
-          </div>
-        </div>
+        <StreamHeader />
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Now Playing */}
-            <Card className="border-gray-200">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center space-x-2">
-                    <HiOutlineFire className="w-5 h-5 text-red-500" />
-                    <span>Now Playing</span>
-                  </CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      size="sm"
-                      variant={currentPlaying === "spotify" ? "default" : "outline"}
-                      onClick={() => setCurrentPlaying("spotify")}
-                      className="h-8"
-                    >
-                      <FaSpotify className="w-4 h-4 mr-1" />
-                      Spotify
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={currentPlaying === "youtube" ? "default" : "outline"}
-                      onClick={() => setCurrentPlaying("youtube")}
-                      className="h-8"
-                    >
-                      <FaYoutube className="w-4 h-4 mr-1" />
-                      YouTube
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <SpotifyPlayer 
-                  currentSong={currentSong}
-                  isActive={currentPlaying === "spotify"}
-                  onToggle={() => setCurrentPlaying("spotify")}
-                />
-                <YouTubePlayer 
-                  currentVideo={currentVideo}
-                  isActive={currentPlaying === "youtube"}
-                  onToggle={() => setCurrentPlaying("youtube")}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Queue */}
-            <Card className="border-gray-200">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BiMusic className="w-5 h-5" />
-                  <span>Up Next</span>
-                  <Badge variant="outline" className="ml-2">
-                    {queue.length} songs
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {queue.map((song, index) => (
-                  <div
-                    key={song.submittedBy + song.id}
-                    className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="text-sm text-gray-400 w-6 text-center">{index + 1}</span>
-                      <img
-                        src={song.platform === "youtube" ? song.thumbnail : song.albumArt || "/placeholder.svg"}
-                        alt={song.title}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
-                    </div>
-
-                    <div className="flex-1">
-                      <h4 className="font-medium text-black">{song.title}</h4>
-                      <p className="text-sm text-gray-600">{song.artist}</p>
-                      <div className="flex items-center space-x-3 mt-1">
-                        <div className="flex items-center space-x-1">
-                          {song.platform === "spotify" ? (
-                          <FaSpotify className="w-3 h-3 text-green-500" />
-                          ) : (
-                          <FaYoutube className="w-3 h-3 text-red-500" />
-                          )}
-                          <span className="text-xs text-gray-500">
-                          {(() => {
-                            const minutes = Math.floor(Number(song.duration) / 60);
-                            const seconds = Number(song.duration) % 60;
-                            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                          })()}
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-400">by @{song.submittedBy}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          size="sm"
-                          variant={song.userVoted === "up" ? "default" : "outline"}
-                          className={`h-8 w-8 p-0 ${song.userVoted === "up"
-                              ? "bg-green-600 hover:bg-green-700"
-                              : "hover:bg-green-50 hover:border-green-300"
-                            }`}
-                          onClick={() => handleVote(song.id, true)}
-                        >
-                          <FaArrowUp
-                            className={`w-3 h-3 ${song.userVoted === "up" ? "text-white" : "text-green-600"}`}
-                          />
-                        </Button>
-                        <span className="text-sm font-medium text-gray-700 min-w-[2rem] text-center">{song.votes}</span>
-                        <Button
-                          size="sm"
-                          variant={song.userVoted === "down" ? "default" : "outline"}
-                          className={`h-8 w-8 p-0 ${song.userVoted === "down"
-                              ? "bg-red-600 hover:bg-red-700"
-                              : "hover:bg-red-50 hover:border-red-300"
-                            }`}
-                          onClick={() => handleVote(song.id, false)}
-                        >
-                          <FaArrowDown
-                            className={`w-3 h-3 ${song.userVoted === "down" ? "text-white" : "text-red-600"}`}
-                          />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <NowPlaying 
+              currentPlaying={currentPlaying}
+              setCurrentPlaying={setCurrentPlaying}
+              currentVideo={currentVideo}
+            />
+            <QueueList queue={queue} onVote={handleVote} />
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Add Music */}
-            <Card className="border-gray-200">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FaMusic className="w-4 h-4" />
-                  <span>Add Music</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="url" className="w-full">
-                  <TabsList className="grid w-full grid-cols-1 bg-gray-100 mb-4">
-                    <TabsTrigger value="url" className="text-sm">
-                      Add by URL
-                    </TabsTrigger>
-                  </TabsList>
+            <AddMusicForm 
+              creatorId={creatorId}
+              onSongAdded={fetchInitialStreams}
+            />
+            
+            {playVideo && (
+              <PlayNextButton 
+                onPlayNext={handlePlayNext}
+                isLoading={isLoading}
+                queueEmpty={queue.length === 0}
+              />
+            )}
 
-                  <TabsContent value="url" className="space-y-4">
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="Paste YouTube or Spotify URL here..."
-                        value={musicUrl}
-                        onChange={(e) => setMusicUrl(e.target.value)}
-                        className={`border-gray-300 focus:border-black ${isValidUrl === false ? "border-red-300 focus:border-red-500" : ""
-                          }`}
-                      />
-                      {detectedPlatform && (
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
-                          {detectedPlatform === "youtube" ? (
-                            <FaYoutube className="w-4 h-4 text-red-500" />
-                          ) : (
-                            <FaSpotify className="w-4 h-4 text-green-500" />
-                          )}
-                          <span>{detectedPlatform === "youtube" ? "YouTube" : "Spotify"} URL detected</span>
-                        </div>
-                      )}
-                      {isValidUrl === false && (
-                        <Alert className="border-red-200 bg-red-50">
-                          <FaTimes className="h-4 w-4 text-red-500" />
-                          <AlertDescription className="text-red-700">
-                            Please enter a valid YouTube or Spotify URL
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                      {isValidUrl === true && (
-                        <Alert className="border-green-200 bg-green-50">
-                          <FaCheck className="h-4 w-4 text-green-500" />
-                          <AlertDescription className="text-green-700">
-                            Valid {detectedPlatform === "youtube" ? "YouTube" : "Spotify"} URL detected
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                    </div>
-
-                    {musicPreview && (
-                      <div className="space-y-3">
-                        <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                          <h4 className="font-medium text-black mb-2 flex items-center space-x-2">
-                            {musicPreview.platform === "youtube" ? (
-                              <FaYoutube className="w-4 h-4 text-red-500" />
-                            ) : (
-                              <FaSpotify className="w-4 h-4 text-green-500" />
-                            )}
-                            <span>Preview</span>
-                          </h4>
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={
-                                musicPreview.platform === "youtube"
-                                  ? musicPreview.thumbnail
-                                  : musicPreview.albumArt || "/placeholder.svg"
-                              }
-                              alt={musicPreview.title}
-                              className="w-16 h-12 rounded object-cover"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm text-black truncate">{musicPreview.title}</p>
-                              <p className="text-xs text-gray-600 truncate">{musicPreview.artist}</p>
-                              <p className="text-xs text-gray-500">{musicPreview.duration}</p>
-                            </div>
-                          </div>
-                          {musicPreview.platform === "spotify" && (
-                            <div className="mt-3">
-                              <iframe
-                                src={`https://open.spotify.com/embed/track/${musicPreview.spotifyId}?utm_source=generator&theme=0`}
-                                width="100%"
-                                height="80"
-                                frameBorder="0"
-                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                loading="lazy"
-                                className="rounded"
-                              ></iframe>
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          onClick={handleSubmitMusic}
-                          disabled={isSubmitting}
-                          className="w-full bg-black hover:bg-gray-800"
-                        >
-                          {isSubmitting ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                              Adding...
-                            </>
-                          ) : (
-                            <>
-                              <FaPlus className="w-4 h-4 mr-2" />
-                              Add to Queue
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-
-            {/* Play next button to hit the next activesong */}
-            {playVideo&&<Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Play Next</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={async () => {
-                      setIsLoading(true);
-                      try {
-                        const response = await fetch(`/api/streams/nextstream`);
-                        if (!response.ok) {
-                          throw new Error('Failed to play next song');
-                        }
-                        const data = await response.json();
-                        console.log('Next song played:', data);
-                        // Optionally, refresh the queue or current playing song
-                        await fetchInitialStreams();
-                      } catch (error) {
-                        console.error('Error playing next song:', error);
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    }
-                    }
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <FaPlay className="w-4 h-4 mr-2" />
-                        Play Next
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-            </Card>}
-
-            {/* Stream Stats */}
-            <Card className="border-gray-200">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <HiOutlineSparkles className="w-4 h-4" />
-                  <span>Stream Stats</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total Votes</span>
-                  <span className="font-semibold text-black">{queue.reduce((sum, song) => sum + Math.abs(song.votes), 0)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Songs in Queue</span>
-                  <span className="font-semibold text-black">{queue.length}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">YouTube Videos</span>
-                  <span className="font-semibold text-black">
-                    {queue.filter((song) => song.platform === "youtube").length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Spotify Tracks</span>
-                  <span className="font-semibold text-black">
-                    {queue.filter((song) => song.platform === "spotify").length}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card className="border-gray-200">
-              <CardHeader>
-                <CardTitle className="text-sm">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <FaHeart className="w-4 h-4 mr-2" />
-                  Follow Stream
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => handleShare(creatorId)}>
-                  <FaShare className="w-4 h-4 mr-2" />
-                  Share Stream
-                </Button>
-              </CardContent>
-            </Card>
+            <StreamStats stats={streamStats} />
+            <QuickActions creatorId={creatorId} />
           </div>
         </div>
       </div>
