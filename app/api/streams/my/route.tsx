@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
             email: session?.user?.email ?? ""
         }
     });
+    
     if (!user) {
         return NextResponse.json({
             message: "Unauthenticated"
@@ -40,9 +41,9 @@ export async function GET(req: NextRequest) {
                 }
             }
         }
-    })
+    });
 
-    const streamsWithVotes = streams.map(stream => ({
+    const streamsWithVotes = streams.map((stream: any) => ({
         ...stream,
         votes: stream._count.upvotes - stream._count.downvotes,
         userVoted: stream.upvotes.length > 0 ? "up" : 
