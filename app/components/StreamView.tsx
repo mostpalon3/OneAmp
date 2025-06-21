@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { AppBar } from "./AppBar"
 import { StreamHeader } from "./stream/StreamHeader"
 import { NowPlaying } from "./stream/NowPlaying"
@@ -36,6 +36,7 @@ export default function StreamView({
     votes: 0,
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [currentPlayTime, setCurrentPlayTime] = useState(0)
 
   const fetchInitialStreams = async () => {
     const streams = await refreshStreams(creatorId);
@@ -65,7 +66,7 @@ export default function StreamView({
           title: streams.activeStream.title || "Unknown Title",
           artist: streams.activeStream.artist || "Unknown Artist",
           duration: streams.activeStream.duration || "0:00",
-          currentTime: "0:00",
+          currentTime: formatTime(currentPlayTime),
           platform: streams.activeStream.type?.toLowerCase() || 'youtube',
           videoId: streams.activeStream.extractedId,
           thumbnail: streams.activeStream.smallImg,
@@ -87,6 +88,12 @@ export default function StreamView({
       setCurrentPlaying(streams.activeStream?.type?.toLowerCase() || "youtube");
       setCurrentVideo(currentTransformedStream);
     }
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   useEffect(() => {
@@ -141,22 +148,55 @@ export default function StreamView({
     }
   };
 
-  const handlePlayNext = async () => {
+  const handlePlayNext = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/streams/nextstream`);
+      const response = await fetch(`/api/streams/nextstream`, {
+        method: 'GET',
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to play next song');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to play next song');
       }
+      // setWasEmpty(response.queueEmpty);
+      
       const data = await response.json();
       console.log('Next song played:', data);
-      await fetchInitialStreams();
+      setCurrentPlayTime(0); // Reset timer for new song
+      
+      // Wait a moment before refreshing to ensure database is updated
+      setTimeout(() => {
+        fetchInitialStreams();
+      }, 1000);
+      
     } catch (error) {
       console.error('Error playing next song:', error);
+      // You might want to show a toast notification here
+      if (error instanceof Error) {
+        console.error('Detailed error:', error.message);
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  const handleVideoEnd = useCallback(() => {
+    console.log('Video/Track ended, playing next...');
+    // Add a small delay to prevent rapid successive calls
+    setTimeout(() => {
+      handlePlayNext();
+    }, 1500);
+  }, [handlePlayNext]);
+
+  const handleTimeUpdate = useCallback((currentTime: number) => {
+    setCurrentPlayTime(currentTime);
+    // Update the current video's currentTime for display
+    setCurrentVideo(prev => ({
+      ...prev,
+      currentTime: formatTime(currentTime)
+    }));
+  }, []);
 
   const streamStats: StreamStatsType = {
     totalVotes: queue.reduce((sum, song) => sum + Math.abs(song.votes), 0),
@@ -181,6 +221,8 @@ export default function StreamView({
                   currentPlaying={currentPlaying}
                   setCurrentPlaying={setCurrentPlaying}
                   currentVideo={currentVideo}
+                  onVideoEnd={handleVideoEnd}
+                  onTimeUpdate={handleTimeUpdate}
                 />
                 <QueueList queue={queue} onVote={handleVote} />
               </div>

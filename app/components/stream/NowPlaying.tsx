@@ -12,6 +12,8 @@ interface NowPlayingProps {
   currentPlaying: "spotify" | "youtube"
   setCurrentPlaying: (platform: "spotify" | "youtube") => void
   currentVideo: CurrentVideo
+  onVideoEnd?: () => void
+  onTimeUpdate?: (currentTime: number) => void
 }
 
 // Placeholder data for Spotify - replace with actual data when available
@@ -27,7 +29,7 @@ const currentSongPlaceholder = {
   spotifyId: "", 
 }
 
-export function NowPlaying({ currentPlaying, setCurrentPlaying, currentVideo }: NowPlayingProps) {
+export function NowPlaying({ currentPlaying, setCurrentPlaying, currentVideo, onVideoEnd, onTimeUpdate }: NowPlayingProps) {
   return (
     <Card className="border-gray-200">
       <CardHeader className="pb-4">
@@ -63,11 +65,15 @@ export function NowPlaying({ currentPlaying, setCurrentPlaying, currentVideo }: 
           currentSong={currentSongPlaceholder}
           isActive={currentPlaying === "spotify"}
           onToggle={() => setCurrentPlaying("spotify")}
+          onTrackEnd={onVideoEnd}
+          onTimeUpdate={onTimeUpdate}
         />
         <YouTubePlayer 
           currentVideo={currentVideo}
           isActive={currentPlaying === "youtube"}
           onToggle={() => setCurrentPlaying("youtube")}
+          onVideoEnd={onVideoEnd}
+          onTimeUpdate={onTimeUpdate}
         />
       </CardContent>
     </Card>

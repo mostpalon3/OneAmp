@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -125,7 +126,7 @@ export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
       setIsValidUrl(null)
       setDetectedPlatform(null)
       setError(null)
-      onSongAdded()
+      onSongAdded()// Notify parent component that a song was added
     } catch (error) {
       console.error('Error submitting music:', error)
       setError('Failed to submit music. Please try again.')

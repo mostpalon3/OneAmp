@@ -1,6 +1,7 @@
 "use client"
 
 import { FaSpotify, FaHeart } from "react-icons/fa"
+import { useEffect, useState } from "react"
 
 interface SpotifyPlayerProps {
   currentSong: {
@@ -16,9 +17,56 @@ interface SpotifyPlayerProps {
   }
   isActive: boolean
   onToggle: () => void
+  onTrackEnd?: () => void
+  onTimeUpdate?: (currentTime: number) => void
 }
 
-export function SpotifyPlayer({ currentSong, isActive, onToggle }: SpotifyPlayerProps) {
+export function SpotifyPlayer({ currentSong, isActive, onToggle, onTrackEnd, onTimeUpdate }: SpotifyPlayerProps) {
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    // Simulate timer for Spotify (since we can't access Spotify player state directly from iframe)
+    const interval = setInterval(() => {
+      setCurrentTime(prev => {
+        const newTime = prev + 1;
+        onTimeUpdate?.(newTime);
+        
+        // Convert duration string to seconds for comparison
+        const durationInSeconds = parseDurationToSeconds(currentSong.duration);
+        if (newTime >= durationInSeconds && durationInSeconds > 0) {
+          onTrackEnd?.();
+          return 0;
+        }
+        
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isActive, currentSong.duration, onTimeUpdate, onTrackEnd]);
+
+  const parseDurationToSeconds = (duration: string): number => {
+    const parts = duration.split(':');
+    if (parts.length === 2) {
+      return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    }
+    return 0;
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const getProgressPercentage = () => {
+    const totalDuration = parseDurationToSeconds(currentSong.duration);
+    if (totalDuration === 0) return 0;
+    return Math.min((currentTime / totalDuration) * 100, 100);
+  };
+
   if (!isActive) return null
 
   return (
@@ -45,10 +93,13 @@ export function SpotifyPlayer({ currentSong, isActive, onToggle }: SpotifyPlayer
         </div>
         <div className="text-right">
           <div className="text-sm text-gray-500 mb-1">
-            {currentSong.currentTime} / {currentSong.duration}
+            {formatTime(currentTime)} / {currentSong.duration}
           </div>
           <div className="w-24 h-1 bg-gray-200 rounded-full">
-            <div className="w-1/2 h-1 bg-green-500 rounded-full"></div>
+            <div 
+              className="h-1 bg-green-500 rounded-full transition-all duration-1000"
+              style={{ width: `${getProgressPercentage()}%` }}
+            ></div>
           </div>
         </div>
       </div>
