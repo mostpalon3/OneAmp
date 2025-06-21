@@ -129,7 +129,7 @@ async function getVideoDetails(videoId: string) {
 }
 
 export async function POST(req: NextRequest) {
-  // const session = await getServerSession(handler);
+  const session = await getServerSession();
   try {
     const data = CreateStreamSchema.parse(await req.json());
 
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
         duration: parseDuration(res.duration),
         artist: res.channelTitle,
         played: false,
-        //  submittedBy: session?.user?.name ?? "anonymous",
+        submittedBy: session?.user?.name ?? "anonymous",
       }
     });
     return NextResponse.json({

@@ -24,7 +24,7 @@ export default function LandingPage() {
   console.log("Google Client Secret:", process.env.GOOGLE_CLIENT_SECRET);
   return (
         <div className="flex flex-col min-h-screen bg-white">
-            <AppBar/>
+            <AppBar />
             <Redirect/>
           <main className="flex-1">
               {/* Hero Section */}

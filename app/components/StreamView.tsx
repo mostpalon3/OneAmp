@@ -12,6 +12,8 @@ import { Song, CurrentVideo, StreamStats as StreamStatsType } from "@/app/lib/ty
 import { refreshStreams, voteOnStream } from "@/app/lib/utils/api-utils"
 import { REFRESH_INTERVAL_MS } from "@/app/lib/constants/stream-constants"
 import { AddMusicForm } from "./stream/AddMusicForm"
+import { QRCodeShare } from "./stream/HandleShare"
+import { Toaster } from "react-hot-toast"
 
 export default function StreamView({
   creatorId,
@@ -48,7 +50,7 @@ export default function StreamView({
         thumbnail: stream.smallImg,
         votes: stream.votes || ((stream._count?.upvotes || 0) - (stream._count?.downvotes || 0)),
         userVoted: stream.userVoted || null,
-        submittedBy: stream.submittedBy || stream.userId || "anonymous"
+        submittedBy: stream.submittedBy,
       }));
       
       const sortedStreams = transformedStreams.sort((a: any, b: any) => {
@@ -195,7 +197,14 @@ export default function StreamView({
             )}
 
             <StreamStats stats={streamStats} />
-            <QuickActions creatorId={creatorId} />
+            
+            {/* Replace QuickActions with QRCodeShare */}
+            <div className="bg-white rounded-lg p-4 shadow-sm border">
+              <h3 className="font-medium text-gray-900 mb-3">Share Stream</h3>
+              <QRCodeShare creatorId={creatorId} />
+            </div>
+            
+            <Toaster/>
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { BiMusic } from "react-icons/bi"
 import { usePathname } from "next/navigation";
 import { FaShare, FaUsers } from "react-icons/fa";
-import { handleShare } from "./HandleShare";
+import { handleShare } from "./stream/HandleShare";
 
 const NAVIGATION_LINKS = [
   { href: "#features", label: "Features" },
@@ -35,7 +35,7 @@ const HomeNavigation = () => (
   </nav>
 );
 
-const DashboardStatus = (creatorId: string) => (
+const DashboardStatus = ({creatorId="0"}:{creatorId: string} ) => (
   <div className="flex items-center space-x-4">
     <div className="flex items-center space-x-2 bg-gray-100 rounded-full px-3 py-1">
       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
@@ -92,7 +92,7 @@ export function AppBar(creatorId: string) {
         <Logo />
         
         {isHomePage && <HomeNavigation />}
-        {isDashboard && DashboardStatus(creatorId)}
+        {isDashboard && DashboardStatus({creatorId})}
         
         <AuthButtons isAuthenticated={isAuthenticated} isHomePage={isHomePage} />
       </div>

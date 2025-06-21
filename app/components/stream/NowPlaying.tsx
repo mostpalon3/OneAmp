@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { HiOutlineFire } from "react-icons/hi"
 import { FaSpotify, FaYoutube } from "react-icons/fa"
-import { SpotifyPlayer } from "../SpotifyPlayer"
-import { YouTubePlayer } from "../YoutubePlayer"
+import { SpotifyPlayer } from "./SpotifyPlayer"
+import { YouTubePlayer } from "./YoutubePlayer"
 import { CurrentVideo } from "@/app/lib/types/stream-types"
 
 interface NowPlayingProps {

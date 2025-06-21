@@ -1,7 +1,5 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { FaSpotify, FaHeart } from "react-icons/fa"
 
 interface SpotifyPlayerProps {

@@ -37,7 +37,7 @@ export function QueueItem({ song, index, onVote }: QueueItemProps) {
               {formatDurationFromString(song.duration)}
             </span>
           </div>
-          <span className="text-xs text-gray-400">by @{song.submittedBy}</span>
+          <span className="text-xs text-gray-400">Added by @{song.submittedBy}</span>
         </div>
       </div>
 
