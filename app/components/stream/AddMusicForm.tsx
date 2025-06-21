@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -13,10 +12,12 @@ import { detectPlatform } from "@/app/lib/utils/platform-detection"
 import { formatDuration } from "@/app/lib/utils/format-utils"
 import { fetchYouTubeVideoPreview, submitStream } from "@/app/lib/utils/api-utils"
 import { MusicPreview } from "@/app/lib/types/stream-types"
+import { on } from "events"
 
 interface AddMusicFormProps {
   creatorId: string
   onSongAdded: () => void
+  // onEmptyQueue: () => void
 }
 
 export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
@@ -100,6 +101,7 @@ export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
     setIsSubmitting(true)
 
     try {
+      console.log("📤 Submitting music...");
       const responseData = await submitStream(creatorId, musicUrl);
       const streamId = responseData.id;
 
@@ -121,12 +123,18 @@ export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
         console.error('Auto-upvote failed:', voteError);
       }
 
+      console.log("✅ Music submitted successfully");
       setMusicUrl("")
       setMusicPreview(null)
       setIsValidUrl(null)
       setDetectedPlatform(null)
       setError(null)
-      onSongAdded()// Notify parent component that a song was added
+      
+      // Wait a moment before refreshing to ensure database is updated
+      setTimeout(() => {
+        onSongAdded()
+      }, 500);
+      
     } catch (error) {
       console.error('Error submitting music:', error)
       setError('Failed to submit music. Please try again.')

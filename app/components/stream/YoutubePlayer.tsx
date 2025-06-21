@@ -41,14 +41,13 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
   // Function to initialize YouTube player
   const initializePlayer = (videoId: string) => {
     if (playerRef.current && videoId && window.YT && window.YT.Player) {
-      console.log('Initializing YouTube player with video:', videoId);
       
       // Destroy existing player if it exists
       if (player) {
         try {
           player.destroy();
         } catch (e) {
-          console.log('Error destroying player:', e);
+          console.error('Error destroying player:', e);
         }
         setPlayer(null);
         setIsPlayerReady(false);
@@ -67,7 +66,6 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
         },
         events: {
           onReady: (event: any) => {
-            console.log('Player ready, starting video');
             setPlayer(event.target);
             setCurrentVideoId(videoId);
             setIsPlayerReady(true);
@@ -97,7 +95,7 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
         try {
           player.destroy();
         } catch (e) {
-          console.log('Error destroying player during cleanup:', e);
+          console.error('Error destroying player during cleanup:', e);
         }
         setPlayer(null);
         setIsPlayerReady(false);
@@ -112,7 +110,7 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
         try {
           player.destroy();
         } catch (e) {
-          console.log('Error destroying player - no video:', e);
+          console.error('Error destroying player - no video:', e);
         }
         setPlayer(null);
         setIsPlayerReady(false);
@@ -123,14 +121,12 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
 
     // Load YouTube IFrame API if not already loaded
     if (!window.YT) {
-      console.log('Loading YouTube API...');
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       const firstScriptTag = document.getElementsByTagName('script')[0];
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
       window.onYouTubeIframeAPIReady = () => {
-        console.log('YouTube API ready');
         initializePlayer(currentVideo.videoId);
       };
     } else {
@@ -150,18 +146,53 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
   // Handle video changes for existing player
   useEffect(() => {
     if (player && isPlayerReady && isActive && currentVideo.videoId && currentVideo.videoId !== currentVideoId) {
-      console.log('Changing video to:', currentVideo.videoId);
       try {
-        player.loadVideoById({
-          videoId: currentVideo.videoId,
-          startSeconds: 0
-        });
-        setCurrentVideoId(currentVideo.videoId);
-        setCurrentTime(0);
+        // More thorough validation of player object
+        if (player && 
+            typeof player === 'object' && 
+            typeof player.loadVideoById === 'function' && 
+            typeof player.getPlayerState === 'function') {
+          
+          // Additional check to ensure player is not destroyed
+          let playerState;
+          try {
+            playerState = player.getPlayerState();
+          } catch (stateError) {
+            console.error('Error getting player state, reinitializing:', stateError);
+            initializePlayer(currentVideo.videoId);
+            return;
+          }
+          
+          // Only proceed if player is in a valid state
+          if (playerState !== undefined && playerState !== null && playerState !== -1) {
+            try {
+              player.loadVideoById({
+                videoId: currentVideo.videoId,
+                startSeconds: 0
+              });
+              setCurrentVideoId(currentVideo.videoId);
+              setCurrentTime(0);
+            } catch (loadError) {
+              console.error('Error loading video, reinitializing:', loadError);
+              initializePlayer(currentVideo.videoId);
+            }
+          } else {
+            // Player not ready, reinitialize
+            initializePlayer(currentVideo.videoId);
+          }
+        } else {
+          // Player methods not available, reinitialize
+          initializePlayer(currentVideo.videoId);
+        }
       } catch (error) {
-        console.error('Error loading video:', error);
-        // Reinitialize player if there's an error
-        initializePlayer(currentVideo.videoId);
+        console.error('Error in video change effect:', error);
+        // Clear the current player and reinitialize
+        setPlayer(null);
+        setIsPlayerReady(false);
+        setCurrentVideoId("");
+        setTimeout(() => {
+          initializePlayer(currentVideo.videoId);
+        }, 100);
       }
     }
   }, [player, isPlayerReady, isActive, currentVideo.videoId, currentVideoId]);

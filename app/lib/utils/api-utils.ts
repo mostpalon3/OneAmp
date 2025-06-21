@@ -33,7 +33,6 @@ export async function refreshStreams(creatorId: string) {
     }
     
     const data = await res.json();
-    console.log("Streams refreshed:", data);
     return data;
   } catch (error) {
     console.error("Error refreshing streams:", error);

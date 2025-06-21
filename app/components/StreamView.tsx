@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { AppBar } from "./AppBar"
 import { StreamHeader } from "./stream/StreamHeader"
 import { NowPlaying } from "./stream/NowPlaying"
 import { QueueList } from "./stream/QueueList"
 import { PlayNextButton } from "./stream/PlayNextButton"
 import { StreamStats } from "./stream/StreamStats"
-import { QuickActions } from "./stream/QuickActions"
 import { Song, CurrentVideo, StreamStats as StreamStatsType } from "@/app/lib/types/stream-types"
 import { refreshStreams, voteOnStream } from "@/app/lib/utils/api-utils"
 import { REFRESH_INTERVAL_MS } from "@/app/lib/constants/stream-constants"
@@ -37,6 +36,8 @@ export default function StreamView({
   })
   const [isLoading, setIsLoading] = useState(false)
   const [currentPlayTime, setCurrentPlayTime] = useState(0)
+  const [wasEmpty, setWasEmpty] = useState(true);
+  const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
   const fetchInitialStreams = async () => {
     const streams = await refreshStreams(creatorId);
@@ -83,7 +84,16 @@ export default function StreamView({
         thumbnail: "/placeholder.svg",
         votes: 0,
       };
+      const isCurrentlyEmpty = !streams.activeStream;
+      const hasQueuedSongs = sortedStreams.length > 0;
+    
       
+      // Check if we should auto-play (was empty, now has songs, but no active stream)
+      if (wasEmpty && hasQueuedSongs && isCurrentlyEmpty) {
+        setShouldAutoPlay(true);
+      }
+      
+      setWasEmpty(isCurrentlyEmpty);
       setQueue(sortedStreams);
       setCurrentPlaying(streams.activeStream?.type?.toLowerCase() || "youtube");
       setCurrentVideo(currentTransformedStream);
@@ -159,20 +169,15 @@ export default function StreamView({
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to play next song');
       }
-      // setWasEmpty(response.queueEmpty);
-      
-      const data = await response.json();
-      console.log('Next song played:', data);
       setCurrentPlayTime(0); // Reset timer for new song
       
       // Wait a moment before refreshing to ensure database is updated
       setTimeout(() => {
         fetchInitialStreams();
-      }, 1000);
+      }, 500);
       
     } catch (error) {
       console.error('Error playing next song:', error);
-      // You might want to show a toast notification here
       if (error instanceof Error) {
         console.error('Detailed error:', error.message);
       }
@@ -182,11 +187,10 @@ export default function StreamView({
   }, []);
 
   const handleVideoEnd = useCallback(() => {
-    console.log('Video/Track ended, playing next...');
     // Add a small delay to prevent rapid successive calls
     setTimeout(() => {
       handlePlayNext();
-    }, 1500);
+    }, 1000);
   }, [handlePlayNext]);
 
   const handleTimeUpdate = useCallback((currentTime: number) => {
@@ -205,6 +209,19 @@ export default function StreamView({
     spotifyTracks: queue.filter((song) => song.platform === "spotify").length,
   };
 
+  // Handle auto-play when shouldAutoPlay changes
+  useEffect(() => {
+    if (shouldAutoPlay) {
+      setShouldAutoPlay(false);
+      handlePlayNext();
+    }
+  }, [shouldAutoPlay, handlePlayNext]);
+
+  // Update the onSongAdded callback to include auto-play logic
+  const handleSongAdded = useCallback(async () => {
+    await fetchInitialStreams();
+  }, []);
+
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
       {AppBar(String(creatorId))}
@@ -213,7 +230,7 @@ export default function StreamView({
         <div className="container mx-auto px-4 lg:px-6 py-6 h-full">
           <StreamHeader />
 
-          <div className="grid lg:grid-cols-3 gap-6 h-[calc(100%-100px)]">
+          <div className="grid lg:grid-cols-3 gap-6 h-[calc(100%-90px)]">
             {/* Main Content Section - 2/3 width with hidden scrollbar */}
             <div className="lg:col-span-2 overflow-y-auto scrollbar-hide">
               <div className="space-y-6">
@@ -233,7 +250,7 @@ export default function StreamView({
               <div className="space-y-6 ">
                 <AddMusicForm 
                   creatorId={creatorId}
-                  onSongAdded={fetchInitialStreams}
+                  onSongAdded={handleSongAdded}
                 />
                 
                 {playVideo && (
