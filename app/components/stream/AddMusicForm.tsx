@@ -12,7 +12,6 @@ import { detectPlatform } from "@/app/lib/utils/platform-detection"
 import { formatDuration } from "@/app/lib/utils/format-utils"
 import { fetchYouTubeVideoPreview, submitStream } from "@/app/lib/utils/api-utils"
 import { MusicPreview } from "@/app/lib/types/stream-types"
-import { on } from "events"
 
 interface AddMusicFormProps {
   creatorId: string

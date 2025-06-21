@@ -264,7 +264,7 @@ const [streams,activeStream] = await Promise.all([prismaClient.stream.findMany({
   }
 })])
 
-  const streamsWithVotes = streams.map(stream => ({
+  const streamsWithVotes = streams.map((stream: any) => ({
     ...stream,
     votes: stream._count.upvotes - stream._count.downvotes,
     userVoted: stream.upvotes.length > 0 ? "up" :

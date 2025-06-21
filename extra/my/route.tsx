@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
     const streamsWithVotes = streams.map((stream: any) => ({
         ...stream,
         votes: stream._count.upvotes - stream._count.downvotes,
-        userVoted: stream.upvotes.length > 0 ? "up" : 
-                  stream.downvotes.length > 0 ? "down" : null
+        userVoted: stream.upvotes.length > 0 ? "up" :
+            stream.downvotes.length > 0 ? "down" : null
     }));
 
     return NextResponse.json({

@@ -20,8 +20,6 @@ import { Footer } from "./components/Footer";
 import { Redirect } from "./components/Redirect";
 
 export default function LandingPage() {
-  console.log("Google Client ID:", process.env.GOOGLE_CLIENT_ID);
-  console.log("Google Client Secret:", process.env.GOOGLE_CLIENT_SECRET);
   return (
         <div className="flex flex-col min-h-screen bg-white">
             <AppBar />
