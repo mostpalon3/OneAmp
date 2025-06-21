@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { HiOutlineSparkles } from "react-icons/hi"
-import { StreamStats as StreamStatsType } from "@/lib/types/stream-types"
+import { StreamStats as StreamStatsType } from "@/app/lib/types/stream-types"
 
 interface StreamStatsProps {
   stats: StreamStatsType

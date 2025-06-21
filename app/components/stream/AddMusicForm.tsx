@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FaMusic, FaSpotify, FaYoutube, FaCheck, FaTimes, FaPlus } from "react-icons/fa"
-import { extractYouTubeId, extractSpotifyId } from "@/lib/utils/url-extractors"
-import { detectPlatform } from "@/lib/utils/platform-detection"
-import { formatDuration } from "@/lib/utils/format-utils"
-import { fetchYouTubeVideoPreview, submitStream } from "@/lib/utils/api-utils"
-import { MusicPreview } from "@/lib/types/stream-types"
+import { extractYouTubeId, extractSpotifyId } from "@/app/lib/utils/url-extractors"
+import { detectPlatform } from "@/app/lib/utils/platform-detection"
+import { formatDuration } from "@/app/lib/utils/format-utils"
+import { fetchYouTubeVideoPreview, submitStream } from "@/app/lib/utils/api-utils"
+import { MusicPreview } from "@/app/lib/types/stream-types"
 
 interface AddMusicFormProps {
   creatorId: string

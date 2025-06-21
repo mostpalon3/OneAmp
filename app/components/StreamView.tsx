@@ -8,9 +8,9 @@ import { QueueList } from "./stream/QueueList"
 import { PlayNextButton } from "./stream/PlayNextButton"
 import { StreamStats } from "./stream/StreamStats"
 import { QuickActions } from "./stream/QuickActions"
-import { Song, CurrentVideo, StreamStats as StreamStatsType } from "@/lib/types/stream-types"
-import { refreshStreams, voteOnStream } from "@/lib/utils/api-utils"
-import { REFRESH_INTERVAL_MS } from "@/lib/constants/stream-constants"
+import { Song, CurrentVideo, StreamStats as StreamStatsType } from "@/app/lib/types/stream-types"
+import { refreshStreams, voteOnStream } from "@/app/lib/utils/api-utils"
+import { REFRESH_INTERVAL_MS } from "@/app/lib/constants/stream-constants"
 import { AddMusicForm } from "./stream/AddMusicForm"
 
 export default function StreamView({

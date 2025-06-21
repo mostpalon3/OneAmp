@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { BiMusic } from "react-icons/bi"
 import { QueueItem } from "./QueueItem"
-import { Song } from "@/lib/types/stream-types"
+import { Song } from "@/app/lib/types/stream-types"
 
 interface QueueListProps {
   queue: Song[]
