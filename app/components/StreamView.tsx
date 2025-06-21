@@ -166,48 +166,56 @@ export default function StreamView({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col">
       {AppBar(String(creatorId))}
 
-      <div className="container mx-auto px-4 lg:px-6 py-6">
-        <StreamHeader />
+      <div className="flex-1 overflow-hidden">
+        <div className="container mx-auto px-4 lg:px-6 py-6 h-full">
+          <StreamHeader />
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <NowPlaying 
-              currentPlaying={currentPlaying}
-              setCurrentPlaying={setCurrentPlaying}
-              currentVideo={currentVideo}
-            />
-            <QueueList queue={queue} onVote={handleVote} />
-          </div>
-
-          <div className="space-y-6">
-            <AddMusicForm 
-              creatorId={creatorId}
-              onSongAdded={fetchInitialStreams}
-            />
-            
-            {playVideo && (
-              <PlayNextButton 
-                onPlayNext={handlePlayNext}
-                isLoading={isLoading}
-                queueEmpty={queue.length === 0}
-              />
-            )}
-
-            <StreamStats stats={streamStats} />
-            
-            {/* Replace QuickActions with QRCodeShare */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border">
-              <h3 className="font-medium text-gray-900 mb-3">Share Stream</h3>
-              <QRCodeShare creatorId={creatorId} />
+          <div className="grid lg:grid-cols-3 gap-6 h-[calc(100%-100px)]">
+            {/* Main Content Section - 2/3 width with hidden scrollbar */}
+            <div className="lg:col-span-2 overflow-y-auto scrollbar-hide">
+              <div className="space-y-6">
+                <NowPlaying 
+                  currentPlaying={currentPlaying}
+                  setCurrentPlaying={setCurrentPlaying}
+                  currentVideo={currentVideo}
+                />
+                <QueueList queue={queue} onVote={handleVote} />
+              </div>
             </div>
-            
-            <Toaster/>
+
+            {/* Sidebar - 1/3 width with visible scrollbar */}
+            <div className="overflow-y-auto scrollbar-hide">
+              <div className="space-y-6 ">
+                <AddMusicForm 
+                  creatorId={creatorId}
+                  onSongAdded={fetchInitialStreams}
+                />
+                
+                {playVideo && (
+                  <PlayNextButton 
+                    onPlayNext={handlePlayNext}
+                    isLoading={isLoading}
+                    queueEmpty={queue.length === 0}
+                  />
+                )}
+
+                <StreamStats stats={streamStats} />
+                
+                {/* Replace QuickActions with QRCodeShare */}
+                <div className="bg-white rounded-lg p-4 shadow-sm border">
+                  <h3 className="font-medium text-gray-900 mb-3">Share Stream</h3>
+                  <QRCodeShare creatorId={creatorId} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      
+      <Toaster/>
     </div>
   )
 }
