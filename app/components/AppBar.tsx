@@ -35,7 +35,7 @@ const HomeNavigation = () => (
   </nav>
 );
 
-const DashboardStatus = ({creatorId="0"}:{creatorId: string} ) => (
+const DashboardStatus = ({ creatorId }: { creatorId: string }) => (
   <div className="flex items-center space-x-4">
     <div className="flex items-center space-x-2 bg-gray-100 rounded-full px-3 py-1">
       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
@@ -51,7 +51,7 @@ const DashboardStatus = ({creatorId="0"}:{creatorId: string} ) => (
   </div>
 );
 
-const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean; isHomePage: boolean ;}) => (
+const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean; isHomePage: boolean }) => (
   <div className="flex items-center space-x-4">
     {isAuthenticated ? (
       <Button 
@@ -78,7 +78,8 @@ const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean
   </div>
 );
 
-export function AppBar(creatorId: string) {
+// Fix the component signature
+export function AppBar({ creatorId }: { creatorId?: string } = {}) {
   const session = useSession();
   const pathname = usePathname();
   
@@ -92,7 +93,7 @@ export function AppBar(creatorId: string) {
         <Logo />
         
         {isHomePage && <HomeNavigation />}
-        {isDashboard && DashboardStatus({creatorId})}
+        {isDashboard && creatorId && <DashboardStatus creatorId={creatorId} />}
         
         <AuthButtons isAuthenticated={isAuthenticated} isHomePage={isHomePage} />
       </div>

@@ -131,7 +131,7 @@ export const handleShare = async (creatorId: string) => {
         url: shareUrl,
       });
     } catch (error) {
-      console.error('Sharing cancelled or failed: ' + error);
+      console.log('Sharing cancelled or failed: ' + error);
       await copyToClipboard(shareUrl);
     }
   } else {
