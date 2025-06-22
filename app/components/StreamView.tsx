@@ -226,13 +226,13 @@ export default function StreamView({
     <div className="h-screen bg-gray-50 flex flex-col">
       <AppBar creatorId={creatorId} />
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 md:overflow-hidden">
         <div className="container mx-auto px-4 lg:px-6 py-6 h-full">
           <StreamHeader />
 
           <div className="grid lg:grid-cols-3 gap-6 h-[calc(100%-90px)]">
             {/* Main Content Section - 2/3 width with hidden scrollbar */}
-            <div className="lg:col-span-2 overflow-y-auto scrollbar-hide">
+            <div className="lg:col-span-2 md:overflow-y-auto scrollbar-hide">
               <div className="space-y-6">
                 <NowPlaying 
                   currentPlaying={currentPlaying}
@@ -241,17 +241,25 @@ export default function StreamView({
                   onVideoEnd={handleVideoEnd}
                   onTimeUpdate={handleTimeUpdate}
                 />
+                <div className="order-1 lg:hidden">
+                  <AddMusicForm 
+                    creatorId={creatorId}
+                    onSongAdded={handleSongAdded}
+                  />
+                </div>
                 <QueueList queue={queue} onVote={handleVote} />
               </div>
             </div>
 
             {/* Sidebar - 1/3 width with visible scrollbar */}
-            <div className="overflow-y-auto scrollbar-hide">
-              <div className="space-y-6 ">
-                <AddMusicForm 
-                  creatorId={creatorId}
-                  onSongAdded={handleSongAdded}
-                />
+            <div className="md:overflow-y-auto scrollbar-hide">
+              <div className="space-y-6">
+                <div className="hidden lg:block">
+                  <AddMusicForm 
+                    creatorId={creatorId}
+                    onSongAdded={handleSongAdded}
+                  />
+                </div>
                 
                 {playVideo && (
                   <PlayNextButton 

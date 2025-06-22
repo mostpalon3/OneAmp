@@ -252,11 +252,11 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
         <img
           src={currentVideo.thumbnail || "/placeholder.svg"}
           alt={currentVideo.title}
-          className="w-20 h-20 rounded-lg object-cover"
+          className="w-20 h-15 md:w-auto md:h-20 rounded-lg object-cover"
         />
         <div className="flex-1">
-          <h3 className="text-xl font-semibold text-black mb-1">{currentVideo.title}</h3>
-          <p className="text-gray-600 mb-2">{currentVideo.artist}</p>
+          <h3 className="text-sm md:text-xl font-semibold text-black mb-1">{currentVideo.title}</h3>
+          <p className="text-gray-600 mb-2 md:text-auto text-xs">{currentVideo.artist}</p>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <FaYoutube className="w-4 h-4 text-red-500" />
@@ -269,12 +269,12 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm text-gray-500 mb-1">
+          <div className="text-[0.6rem] md:text-sm text-gray-500 mb-1">
             {formatTime(currentTime)} / {formatDuration(currentVideo.duration)}
           </div>
-          <div className="w-24 h-1 bg-gray-200 rounded-full">
+          <div className="w-18 md:w-24 h-1 bg-gray-200 rounded-full">
             <div 
-              className="h-1 bg-red-500 rounded-full transition-all duration-1000"
+              className="h-1 bg-slate-500 rounded-full transition-all duration-1000"
               style={{ width: `${getProgressPercentage()}%` }}
             ></div>
           </div>
@@ -291,26 +291,26 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
           {!isPlayerReady && (
             <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto mb-2"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto mb-2"></div>
                 <p className="text-sm text-gray-500">Loading video...</p>
               </div>
             </div>
           )}
         </div>
       ) : (
-        <div className="aspect-video w-full bg-gradient-to-br from-red-50 to-red-100 rounded-lg flex items-center justify-center border-2 border-dashed border-red-200">
+        <div className="aspect-video w-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200 mt-2.5">
           <div className="text-center text-gray-600 max-w-md px-6">
             {/* Animated Icons */}
             <div className="relative mb-6">
               <div className="flex justify-center items-center space-x-4">
                 <div className="animate-bounce delay-0">
-                  <FaYoutube className="w-12 h-12 text-red-400" />
+                  <FaYoutube className="w-12 h-12 text-black" />
                 </div>
                 <div className="animate-bounce delay-150">
-                  <HiOutlineMusicalNote className="w-10 h-10 text-red-300" />
+                  <HiOutlineMusicalNote className="w-10 h-10 text-black" />
                 </div>
                 <div className="animate-bounce delay-300">
-                  <FaMusic className="w-8 h-8 text-red-200" />
+                  <FaMusic className="w-8 h-8 text-black" />
                 </div>
               </div>
             </div>
@@ -324,13 +324,13 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
             </p>
             
             {/* Call to Action */}
-            <div className="flex items-center justify-center space-x-2 text-red-500 font-medium">
+            <div className="flex items-center justify-center space-x-2 text-black font-medium">
               <FaPlus className="w-4 h-4" />
               <span>Add New Songs</span>
             </div>
             
             {/* Fun Stats or Encouragement */}
-            <div className="mt-6 pt-4 border-t border-red-200">
+            <div className="mt-6 pt-4 border-t border-gray-200">
               <p className="text-sm text-gray-500 italic">
                 "Music is the universal language of mankind" 🎵
               </p>
