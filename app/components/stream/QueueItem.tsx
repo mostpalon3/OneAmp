@@ -13,19 +13,19 @@ interface QueueItemProps {
 
 export function QueueItem({ song, index, onVote }: QueueItemProps) {
   return (
-    <div className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+    <div className="flex items-center space-x-6 md:space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
       <div className="flex items-center space-x-3">
         <span className="text-sm text-gray-400 w-6 text-center">{index + 1}</span>
         <img
           src={song.platform === "youtube" ? song.thumbnail : song.albumArt || "/placeholder.svg"}
           alt={song.title}
-          className="w-12 h-12 rounded-lg object-cover"
+          className="md:w-12 md:h-12 w-10 h-8 rounded-sm object-cover"
         />
       </div>
 
       <div className="flex-1">
-        <h4 className="font-medium text-black">{song.title}</h4>
-        <p className="text-sm text-gray-600">{song.artist}</p>
+        <h4 className="font-bold md:text-sm text-[0.6rem] text-black">{song.title}</h4>
+        <p className="text-[0.55rem] md:text-sm text-gray-600">{song.artist}</p>
         <div className="flex items-center space-x-3 mt-1">
           <div className="flex items-center space-x-1">
             {song.platform === "spotify" ? (
@@ -37,8 +37,8 @@ export function QueueItem({ song, index, onVote }: QueueItemProps) {
               {formatDurationFromString(song.duration)}
             </span>
           </div>
-          <span className="text-xs text-gray-400">Added by @{song.submittedBy}</span>
         </div>
+          <span className="text-[0.5rem] w-full line-clamp-2 mt-0.5 md:text-xs text-gray-400">Added by @{song.submittedBy}</span>
       </div>
 
       <div className="flex items-center space-x-2">
