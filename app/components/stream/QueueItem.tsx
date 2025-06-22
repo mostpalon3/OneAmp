@@ -24,7 +24,7 @@ export function QueueItem({ song, index, onVote }: QueueItemProps) {
       </div>
 
       <div className="flex-1">
-        <h4 className="font-bold md:text-sm text-[0.6rem] text-black">{song.title}</h4>
+        <h4 className="font-medium md:text-sm text-[0.6rem] text-black">{song.title}</h4>
         <p className="text-[0.55rem] md:text-sm text-gray-600">{song.artist}</p>
         <div className="flex items-center space-x-3 mt-1">
           <div className="flex items-center space-x-1">

@@ -152,9 +152,6 @@ export default function StreamView({
           })
       );
       await voteOnStream(String(songId), isUpvote);
-      await fetchInitialStreams();
-      
-
     } catch (error) {
       console.error('Error voting:', error);
     }
