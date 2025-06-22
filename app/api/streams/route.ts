@@ -193,90 +193,145 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const creatorId = req.nextUrl.searchParams.get('creatorId');
   const session = await getServerSession();
-  //TODO:u can get rid of db call here
-  const user = await prismaClient.user.findFirst({
-    where: {
-      email: session?.user?.email ?? ""
-    }
-  });
+  
   if (!creatorId) {
     return NextResponse.json({
       message: "Creator ID is required"
-    }, {
-      status: 411
-    });
+    }, { status: 411 });
   }
-  if (!user) {
+
+  if (!session?.user?.email) {
     return NextResponse.json({
       message: "Unauthenticated"
-    }, {
-      status: 403
-    });
+    }, { status: 403 });
   }
-const [streams,activeStream] = await Promise.all([prismaClient.stream.findMany({
-  where: {
-    userId: creatorId,
-    played: false
-  },
-  include: {
-    _count: {
-      select: {
-        upvotes: true,
-        downvotes: true,
-      }
-    },
-    upvotes: {
-      where: {
-        userId: user.id
-      }
-    },
-    downvotes: {
-      where: {
-        userId: user.id
-      }
-    }
-  }
-}), prismaClient.currentStream.findFirst({
-  where: {
-    userId: creatorId
-  },
-  include:{
-    stream: {
-      include: {
-        _count: {
-          select: {
-            upvotes: true,
-            downvotes: true,
+
+  try {
+    // Single optimized query instead of multiple calls
+    const [user, streamsData, activeStreamData] = await Promise.all([
+      // Cache user lookup with a more efficient query
+      prismaClient.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true } // Only select what we need
+      }),
+      
+      // Optimized streams query with selective includes
+      prismaClient.stream.findMany({
+        where: {
+          userId: creatorId,
+          played: false
+        },
+        select: {
+          id: true,
+          title: true,
+          artist: true,
+          duration: true,
+          smallImg: true,
+          bigImg: true,
+          extractedId: true,
+          type: true,
+          submittedBy: true,
+          createdAt: true,
+          _count: {
+            select: {
+              upvotes: true,
+              downvotes: true,
+            }
           }
         },
-        upvotes: {
-          where: {
-            userId: user.id
-          }
-        },
-        downvotes: {
-          where: {
-            userId: user.id
+        orderBy: {
+          createdAt: 'asc'
+        }
+      }),
+      
+      // Optimized active stream query
+      prismaClient.currentStream.findUnique({
+        where: { userId: creatorId },
+        select: {
+          stream: {
+            select: {
+              id: true,
+              title: true,
+              artist: true,
+              duration: true,
+              smallImg: true,
+              bigImg: true,
+              extractedId: true,
+              type: true,
+              submittedBy: true,
+              _count: {
+                select: {
+                  upvotes: true,
+                  downvotes: true,
+                }
+              }
+            }
           }
         }
-      }
+      })
+    ]);
+
+    if (!user) {
+      return NextResponse.json({
+        message: "User not found"
+      }, { status: 404 });
     }
+
+    // Get user votes in a separate optimized query only if needed
+    const streamIds = streamsData.map(s => s.id);
+    const activeStreamId = activeStreamData?.stream?.id;
+    
+    const allStreamIds = activeStreamId 
+      ? [...streamIds, activeStreamId]
+      : streamIds;
+
+    const userVotes = allStreamIds.length > 0 ? await prismaClient.$transaction([
+      prismaClient.upvote.findMany({
+        where: {
+          userId: user.id,
+          streamId: { in: allStreamIds }
+        },
+        select: { streamId: true }
+      }),
+      prismaClient.downvote.findMany({
+        where: {
+          userId: user.id,
+          streamId: { in: allStreamIds }
+        },
+        select: { streamId: true }
+      })
+    ]) : [[], []];
+
+    const [upvotes, downvotes] = userVotes;
+    const upvoteMap = new Set(upvotes.map(v => v.streamId));
+    const downvoteMap = new Set(downvotes.map(v => v.streamId));
+
+    // Transform data efficiently
+    const streamsWithVotes = streamsData.map(stream => ({
+      ...stream,
+      votes: stream._count.upvotes - stream._count.downvotes,
+      userVoted: upvoteMap.has(stream.id) ? "up" : 
+                 downvoteMap.has(stream.id) ? "down" : null,
+      platform: stream.type?.toLowerCase() || "youtube"
+    }));
+
+    const activeStreamWithVotes = activeStreamData?.stream ? {
+      ...activeStreamData.stream,
+      votes: activeStreamData.stream._count.upvotes - activeStreamData.stream._count.downvotes,
+      userVoted: upvoteMap.has(activeStreamData.stream.id) ? "up" : 
+                 downvoteMap.has(activeStreamData.stream.id) ? "down" : null,
+      platform: activeStreamData.stream.type?.toLowerCase() || "youtube"
+    } : null;
+
+    return NextResponse.json({
+      streams: streamsWithVotes,
+      activeStream: activeStreamWithVotes
+    });
+
+  } catch (error) {
+    console.error('Database error:', error);
+    return NextResponse.json({
+      message: "Internal server error"
+    }, { status: 500 });
   }
-})])
-
-  const streamsWithVotes = streams.map((stream: any) => ({
-    ...stream,
-    votes: stream._count.upvotes - stream._count.downvotes,
-    userVoted: stream.upvotes.length > 0 ? "up" :
-      stream.downvotes.length > 0 ? "down" : null
-  }));
-  const activeStreamWithVotes = activeStream?.stream ? {
-    ...activeStream.stream,
-    votes: activeStream.stream._count.upvotes - activeStream.stream._count.downvotes,
-  } : null;
-
-  return NextResponse.json({
-    streams: streamsWithVotes,
-    activeStream: activeStreamWithVotes
-  });
 }

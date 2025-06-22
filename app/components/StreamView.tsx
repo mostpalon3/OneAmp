@@ -122,8 +122,6 @@ export default function StreamView({
     }
 
     try {
-      await voteOnStream(String(songId), isUpvote);
-
       setQueue((prevQueue) =>
         prevQueue
           .map((song) => {
@@ -153,6 +151,10 @@ export default function StreamView({
             return String(a.id).localeCompare(String(b.id));
           })
       );
+      await voteOnStream(String(songId), isUpvote);
+      await fetchInitialStreams();
+      
+
     } catch (error) {
       console.error('Error voting:', error);
     }

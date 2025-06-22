@@ -5,67 +5,56 @@ import { z } from "zod";
 
 const UpvoteSchema = z.object({
     streamId: z.string(),
-})
+});
 
 export async function POST(req: NextRequest) {
-    const session = await getServerSession();
-    const user = await prismaClient.user.findFirst({
-        where: {
-            email: session?.user?.email ?? ""
-        }
-    });
-    
-    if(!user){
-        return NextResponse.json({
-            message: "Unauthenticated"
-        },{
-            status : 403
-        });
-    }
-
     try {
-        const data = UpvoteSchema.parse(await req.json());
+        const session = await getServerSession();
         
-        // Check existing votes
-        const existingUpvote = await prismaClient.upvote.findUnique({
-            where: {
-                userId_streamId: {
-                    userId: user.id,
-                    streamId: data.streamId
-                }
-            }
-        });
-        
-        const existingDownvote = await prismaClient.downvote.findUnique({
-            where: {
-                userId_streamId: {
-                    userId: user.id,
-                    streamId: data.streamId
-                }
-            }
-        });
-
-        if (existingUpvote) {
-            // User already upvoted, remove the upvote
-            await prismaClient.upvote.delete({
-                where: {
-                    userId_streamId: {
-                        userId: user.id,
-                        streamId: data.streamId
-                    }
-                }
-            });
-            
+        if (!session?.user?.email) {
             return NextResponse.json({
-                message: "Upvote removed successfully",
-                action: "removed"
-            }, {
-                status: 200
+                message: "Unauthenticated"
+            }, { status: 403 });
+        }
+
+        const userEmail = session.user.email;
+
+        const data = UpvoteSchema.parse(await req.json());
+
+        const result = await prismaClient.$transaction(async (tx) => {
+            // Get user efficiently
+            const user = await tx.user.findUnique({
+                where: { email: userEmail },
+                select: { id: true }
             });
-        } else {
-            // Remove downvote if exists
-            if (existingDownvote) {
-                await prismaClient.downvote.delete({
+
+            if (!user) {
+                throw new Error("User not found");
+            }
+
+            // Check existing votes in parallel
+            const [existingUpvote, existingDownvote] = await Promise.all([
+                tx.upvote.findUnique({
+                    where: {
+                        userId_streamId: {
+                            userId: user.id,
+                            streamId: data.streamId
+                        }
+                    }
+                }),
+                tx.downvote.findUnique({
+                    where: {
+                        userId_streamId: {
+                            userId: user.id,
+                            streamId: data.streamId
+                        }
+                    }
+                })
+            ]);
+
+            if (existingUpvote) {
+                // Remove upvote
+                await tx.upvote.delete({
                     where: {
                         userId_streamId: {
                             userId: user.id,
@@ -73,28 +62,46 @@ export async function POST(req: NextRequest) {
                         }
                     }
                 });
-            }
-            
-            // Add upvote
-            await prismaClient.upvote.create({
-                data: {
-                    userId: user.id,
-                    streamId: data.streamId
+                return { action: "removed", message: "Upvote removed successfully" };
+            } else {
+                // Remove downvote if exists and add upvote
+                const operations = [];
+                
+                if (existingDownvote) {
+                    operations.push(
+                        tx.downvote.delete({
+                            where: {
+                                userId_streamId: {
+                                    userId: user.id,
+                                    streamId: data.streamId
+                                }
+                            }
+                        })
+                    );
                 }
-            });
-            
-            return NextResponse.json({
-                message: "Upvoted successfully",
-                action: "added"
-            }, {
-                status: 201
-            });
-        }
-    } catch (e) {
+                
+                operations.push(
+                    tx.upvote.create({
+                        data: {
+                            userId: user.id,
+                            streamId: data.streamId
+                        }
+                    })
+                );
+
+                await Promise.all(operations);
+                return { action: "added", message: "Upvoted successfully" };
+            }
+        });
+
+        return NextResponse.json(result, { 
+            status: result.action === "added" ? 201 : 200 
+        });
+
+    } catch (error) {
+        console.error('Upvote error:', error);
         return NextResponse.json({
             message: "Error while processing upvote"
-        }, {
-            status: 500
-        }); 
+        }, { status: 500 });
     }
 }

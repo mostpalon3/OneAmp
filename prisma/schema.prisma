@@ -24,6 +24,10 @@ model User {
   upvotes       Upvote[]
   downvotes     Downvote[]
   createdAt     DateTime       @default(now())
+
+  // Performance indexes
+  @@index([email], name: "users_email_idx")
+  @@index([provider], name: "users_provider_idx")
 }
 
 model Stream{
@@ -45,12 +49,24 @@ model Stream{
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   currentStream  CurrentStream? 
   submittedBy    String          @default("anonymous")
+
+  // Performance indexes for your most common queries
+  @@index([userId, played], name: "streams_userId_played_idx")
+  @@index([played, createdAt], name: "streams_played_createdAt_idx")
+  @@index([userId, active], name: "streams_userId_active_idx")
+  @@index([userId, played, createdAt], name: "streams_userId_played_createdAt_idx")
+  @@index([type], name: "streams_type_idx")
+  @@index([extractedId], name: "streams_extractedId_idx")
 }
 
 model CurrentStream {
   userId        String          @id
   streamId      String?         @unique
   stream        Stream?         @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  // Performance index for current stream lookups
+  @@index([userId], name: "currentStream_userId_idx")
+  @@index([streamId], name: "currentStream_streamId_idx")
 }
 
 model Upvote{
@@ -59,21 +75,33 @@ model Upvote{
   streamId      String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   stream        Stream         @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  
   @@unique([userId, streamId])
+  // Performance indexes for vote counting and user vote checks
+  @@index([streamId], name: "upvotes_streamId_idx")
+  @@index([userId], name: "upvotes_userId_idx")
+  @@index([streamId, userId], name: "upvotes_streamId_userId_idx")
 }
+
 model Downvote{
   id            String         @id @default(uuid())
   userId        String
   streamId      String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   stream        Stream         @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  
   @@unique([userId, streamId])
+  // Performance indexes for vote counting and user vote checks
+  @@index([streamId], name: "downvotes_streamId_idx")
+  @@index([userId], name: "downvotes_userId_idx")
+  @@index([streamId, userId], name: "downvotes_streamId_userId_idx")
 }
 
 enum StreamType {
   Spotify
   YouTube
 }
+
 enum Provider {
   GOOGLE
 }
