@@ -15,40 +15,62 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  name          String         @default("")
-  image         String         @default("")
-  provider      Provider
-  streams       Stream[]
-  upvotes       Upvote[]
-  downvotes     Downvote[]
-  createdAt     DateTime       @default(now())
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String     @default("")
+  image     String     @default("")
+  provider  Provider
+  streams   Stream[]
+  upvotes   Upvote[]
+  downvotes Downvote[]
+  createdAt DateTime   @default(now())
+  Jam       Jam[]
+  followers  Int        @default(0)
+  followed   Boolean    @default(false)
+  bio       String     @default("")
 
   // Performance indexes
   @@index([email], name: "users_email_idx")
   @@index([provider], name: "users_provider_idx")
 }
 
-model Stream{
-  id             String         @id @default(uuid())
-  type           StreamType
-  url            String
-  extractedId    String
-  title          String         @default("")
-  artist         String         @default("")
-  smallImg       String         @default("")
-  bigImg         String         @default("")
-  duration       Int            @default(0)
-  active         Boolean        @default(true)
-  played         Boolean        @default(false)
-  upvotes        Upvote[]       
-  downvotes      Downvote[]     
-  createdAt      DateTime       @default(now())
-  userId         String
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currentStream  CurrentStream? 
-  submittedBy    String          @default("anonymous")
+model Jam {
+  id        String   @id @default(uuid())
+  title     String   @default("")
+  createdAt DateTime @default(now())
+  userId    String
+  followers Int      @default(0)
+  likes     Int      @default(0)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  streams   Stream[] 
+
+  // Performance indexes for common queries
+  @@index([userId], name: "jams_userId_idx")
+  @@index([createdAt], name: "jams_createdAt_idx")
+}
+
+model Stream {
+  id            String         @id @default(uuid())
+  type          StreamType
+  url           String
+  extractedId   String
+  title         String         @default("")
+  artist        String         @default("")
+  smallImg      String         @default("")
+  bigImg        String         @default("")
+  duration      Int            @default(0)
+  active        Boolean        @default(true)
+  played        Boolean        @default(false)
+  upvotes       Upvote[]
+  downvotes     Downvote[]
+  createdAt     DateTime       @default(now())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStream CurrentStream?
+  submittedBy   String         @default("anonymous")
+  Jam           Jam?           @relation(fields: [jamId], references: [id])
+  jamId         String?
 
   // Performance indexes for your most common queries
   @@index([userId, played], name: "streams_userId_played_idx")
@@ -60,22 +82,22 @@ model Stream{
 }
 
 model CurrentStream {
-  userId        String          @id
-  streamId      String?         @unique
-  stream        Stream?         @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  userId   String  @id
+  streamId String? @unique
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Cascade)
 
   // Performance index for current stream lookups
   @@index([userId], name: "currentStream_userId_idx")
   @@index([streamId], name: "currentStream_streamId_idx")
 }
 
-model Upvote{
-  id            String         @id @default(uuid())
-  userId        String
-  streamId      String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stream        Stream         @relation(fields: [streamId], references: [id], onDelete: Cascade)
-  
+model Upvote {
+  id       String @id @default(uuid())
+  userId   String
+  streamId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stream   Stream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
   @@unique([userId, streamId])
   // Performance indexes for vote counting and user vote checks
   @@index([streamId], name: "upvotes_streamId_idx")
@@ -83,13 +105,13 @@ model Upvote{
   @@index([streamId, userId], name: "upvotes_streamId_userId_idx")
 }
 
-model Downvote{
-  id            String         @id @default(uuid())
-  userId        String
-  streamId      String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stream        Stream         @relation(fields: [streamId], references: [id], onDelete: Cascade)
-  
+model Downvote {
+  id       String @id @default(uuid())
+  userId   String
+  streamId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stream   Stream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
   @@unique([userId, streamId])
   // Performance indexes for vote counting and user vote checks
   @@index([streamId], name: "downvotes_streamId_idx")

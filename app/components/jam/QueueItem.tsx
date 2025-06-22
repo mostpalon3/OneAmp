@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { FaArrowUp, FaArrowDown, FaSpotify, FaYoutube } from "react-icons/fa"
-import { Song } from "@/app/lib/types/stream-types"
+import { Song } from "@/app/lib/types/jam-types"
 import { formatDurationFromString } from "@/app/lib/utils/format-utils"
 
 interface QueueItemProps {

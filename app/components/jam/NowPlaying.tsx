@@ -6,7 +6,7 @@ import { HiOutlineFire } from "react-icons/hi"
 import { FaSpotify, FaYoutube } from "react-icons/fa"
 import { SpotifyPlayer } from "./SpotifyPlayer"
 import { YouTubePlayer } from "./YoutubePlayer"
-import { CurrentVideo } from "@/app/lib/types/stream-types"
+import { CurrentVideo } from "@/app/lib/types/jam-types"
 
 interface NowPlayingProps {
   currentPlaying: "spotify" | "youtube"

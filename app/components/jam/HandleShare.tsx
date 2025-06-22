@@ -41,7 +41,7 @@ export const QRCodeShare = ({ creatorId }: { creatorId: string }) => {
     const shareUrl = `${window.location.origin}/creator/${creatorId}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('Stream link copied to clipboard!');
+      toast.success('Jam link copied to clipboard!');
     } catch (error) {
       toast.error('Failed to copy to clipboard');
     }
@@ -51,7 +51,7 @@ export const QRCodeShare = ({ creatorId }: { creatorId: string }) => {
     if (!qrCodeDataUrl) return;
     
     const link = document.createElement('a');
-    link.download = `oneamp-stream-${creatorId}.png`;
+    link.download = `oneamp-jam-${creatorId}.png`;
     link.href = qrCodeDataUrl;
     link.click();
     toast.success('QR Code downloaded!');
@@ -84,11 +84,11 @@ export const QRCodeShare = ({ creatorId }: { creatorId: string }) => {
           <div className="text-center">
             <img
               src={qrCodeDataUrl}
-              alt="QR Code for stream"
+              alt="QR Code for jam"
               className="mx-auto rounded-lg"
             />
             <p className="text-sm text-gray-600 mt-2">
-              Scan to join the stream
+              Scan to join the jam
             </p>
           </div>
           
@@ -126,8 +126,8 @@ export const handleShare = async (creatorId: string) => {
   if (navigator.share) {
     try {
       await navigator.share({
-        title: 'OneAmp Stream',
-        text: 'Check out this awesome music stream!',
+        title: 'OneAmp Jam',
+        text: 'Check out this awesome music jam!',
         url: shareUrl,
       });
     } catch (error) {
@@ -142,7 +142,7 @@ export const handleShare = async (creatorId: string) => {
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success('Stream link copied to clipboard!');
+    toast.success('Jam link copied to clipboard!');
   } catch (error) {
     toast.error('Failed to copy to clipboard: '+ error);
     prompt('Copy this link to share:', text);

@@ -3,7 +3,7 @@
 import { FaEye, FaClock } from "react-icons/fa"
 import { BiTrendingUp } from "react-icons/bi"
 
-export function StreamHeader() {
+export function JamHeader() {
   return (
     <div className="mb-6">
       <div className="flex items-center space-x-4 mb-2">
@@ -18,7 +18,7 @@ export function StreamHeader() {
       <div className="flex items-center space-x-6 text-sm text-gray-500">
         <div className="flex items-center space-x-2">
           <FaEye className="w-4 h-4" />
-          <span className="md:text-sm text-xs">Live Stream</span>
+          <span className="md:text-sm text-xs">Live Jam</span>
         </div>
         <div className="flex items-center space-x-2">
           <FaClock className="w-4 h-4" />

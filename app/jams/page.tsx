@@ -1,9 +1,9 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import StreamView from "../components/StreamView";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import JamPage from "../components/JamPage";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -33,5 +33,5 @@ export default function Dashboard() {
     );
   }
 
-  return <StreamView creatorId={session.user.id} playVideo={true} />;
+  return <JamPage creatorId={session.user.id} playVideo={true} />;
 }

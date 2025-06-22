@@ -2,19 +2,19 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { HiOutlineSparkles } from "react-icons/hi"
-import { StreamStats as StreamStatsType } from "@/app/lib/types/stream-types"
+import { JamStats as JamStatsType } from "@/app/lib/types/jam-types"
 
-interface StreamStatsProps {
-  stats: StreamStatsType
+interface JamStats {
+  stats: JamStatsType
 }
 
-export function StreamStats({ stats }: StreamStatsProps) {
+export function JamStats({ stats }: JamStats) {
   return (
     <Card className="border-gray-200">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <HiOutlineSparkles className="w-4 h-4" />
-          <span>Stream Stats</span>
+          <span>Jam Stats</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -2,19 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { AppBar } from "./AppBar"
-import { StreamHeader } from "./stream/StreamHeader"
-import { NowPlaying } from "./stream/NowPlaying"
-import { QueueList } from "./stream/QueueList"
-import { PlayNextButton } from "./stream/PlayNextButton"
-import { StreamStats } from "./stream/StreamStats"
-import { Song, CurrentVideo, StreamStats as StreamStatsType } from "@/app/lib/types/stream-types"
+import { JamHeader } from "./jam/JamHeader"
+import { NowPlaying } from "./jam/NowPlaying"
+import { QueueList } from "./jam/QueueList"
+import { PlayNextButton } from "./jam/PlayNextButton"
+import { JamStats } from "./jam/JamStats"
+import { Song, CurrentVideo, JamStats as JamStatsType } from "@/app/lib/types/jam-types"
 import { refreshStreams, voteOnStream } from "@/app/lib/utils/api-utils"
 import { REFRESH_INTERVAL_MS } from "@/app/lib/constants/stream-constants"
-import { AddMusicForm } from "./stream/AddMusicForm"
-import { QRCodeShare } from "./stream/HandleShare"
+import { AddMusicForm } from "./jam/AddMusicForm"
+import { QRCodeShare } from "./jam/HandleShare"
 import { Toaster } from "react-hot-toast"
 
-export default function StreamView({
+export default function JamPage({
   creatorId,
   playVideo = false
 }: {
@@ -122,6 +122,7 @@ export default function StreamView({
     }
 
     try {
+      await voteOnStream(String(songId), isUpvote);
       setQueue((prevQueue) =>
         prevQueue
           .map((song) => {
@@ -151,7 +152,6 @@ export default function StreamView({
             return String(a.id).localeCompare(String(b.id));
           })
       );
-      await voteOnStream(String(songId), isUpvote);
     } catch (error) {
       console.error('Error voting:', error);
     }
@@ -201,7 +201,7 @@ export default function StreamView({
     }));
   }, []);
 
-  const streamStats: StreamStatsType = {
+  const streamStats: JamStatsType = {
     totalVotes: queue.reduce((sum, song) => sum + Math.abs(song.votes), 0),
     songsInQueue: queue.length,
     youtubeVideos: queue.filter((song) => song.platform === "youtube").length,
@@ -227,7 +227,7 @@ export default function StreamView({
 
       <div className="flex-1 md:overflow-hidden">
         <div className="container mx-auto px-4 lg:px-6 py-6 h-full">
-          <StreamHeader />
+          <JamHeader />
 
           <div className="grid lg:grid-cols-3 gap-6 h-[calc(100%-90px)]">
             {/* Main Content Section - 2/3 width with hidden scrollbar */}
@@ -268,7 +268,7 @@ export default function StreamView({
                   />
                 )}
 
-                <StreamStats stats={streamStats} />
+                <JamStats stats={streamStats} />
                 
                 {/* Replace QuickActions with QRCodeShare */}
                 <div className="bg-white rounded-lg p-4 shadow-sm border">

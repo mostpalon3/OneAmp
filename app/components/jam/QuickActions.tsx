@@ -18,11 +18,11 @@ export function QuickActions({ creatorId }: QuickActionsProps) {
       <CardContent className="space-y-2">
         <Button variant="outline" size="sm" className="w-full justify-start">
           <FaHeart className="w-4 h-4 mr-2" />
-          Follow Stream
+          Follow Jam
         </Button>
         <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => handleShare(creatorId)}>
           <FaShare className="w-4 h-4 mr-2" />
-          Share Stream
+          Share Jam
         </Button>
       </CardContent>
     </Card>

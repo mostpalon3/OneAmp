@@ -4,7 +4,7 @@ import Link from "next/link"
 import { BiMusic } from "react-icons/bi"
 import { usePathname } from "next/navigation";
 import { FaShare, FaUsers } from "react-icons/fa";
-import { handleShare } from "./stream/HandleShare";
+import { handleShare } from "./jam/HandleShare";
 
 const NAVIGATION_LINKS = [
   { href: "#features", label: "Features" },
@@ -35,7 +35,7 @@ const HomeNavigation = () => (
   </nav>
 );
 
-const DashboardStatus = ({ creatorId }: { creatorId: string }) => (
+const JamPageStatus = ({ creatorId }: { creatorId: string }) => (
   <div className="flex items-center space-x-3 md:space-x-4">
     <div className="flex items-center space-x-1 md:space-x-2 bg-gray-100 rounded-full px-2 md:px-3 py-1">
       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
@@ -86,7 +86,7 @@ export function AppBar({ creatorId }: { creatorId?: string } = {}) {
   const pathname = usePathname();
   
   const isHomePage = pathname === "/";
-  const isDashboard = pathname === "/dashboard" || pathname.startsWith("/creator/");
+  const isJamPage = pathname === "/jam" || pathname.startsWith("/creator/" );
   const isAuthenticated = Boolean(session.data?.user);
 
   return (
@@ -95,7 +95,7 @@ export function AppBar({ creatorId }: { creatorId?: string } = {}) {
         <Logo />
         
         {isHomePage && <HomeNavigation />}
-        {isDashboard && creatorId && <DashboardStatus creatorId={creatorId} />}
+        {isJamPage && creatorId && <JamPageStatus creatorId={creatorId} />}
         
         <AuthButtons isAuthenticated={isAuthenticated} isHomePage={isHomePage} />
       </div>

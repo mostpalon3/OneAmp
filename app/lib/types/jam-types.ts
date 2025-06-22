@@ -39,7 +39,7 @@ export interface MusicPreview {
   url?: string
 }
 
-export interface StreamStats {
+export interface JamStats {
   totalVotes: number
   songsInQueue: number
   youtubeVideos: number

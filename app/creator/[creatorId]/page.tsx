@@ -1,4 +1,4 @@
-import StreamView from "@/app/components/StreamView"
+import JamPage from "@/app/components/JamPage";
 
 export default async function CreatorPage({
     params
@@ -6,5 +6,5 @@ export default async function CreatorPage({
     params: Promise<{ creatorId: string }>
 }) {
     const { creatorId } = await params;
-    return <StreamView creatorId={creatorId} playVideo={false}/>
+    return <JamPage creatorId={creatorId} playVideo={false}/>
 }
