@@ -41,10 +41,10 @@ import { useRouter } from "next/navigation"
 // Mock user data
 const currentUser = {
   id: 1,
-  name: "Alex Johnson",
-  username: "@alexjohnson",
-  bio: "Music enthusiast and DJ. Creating vibes since 2020. Electronic • House • Progressive",
-  avatar: "/placeholder.svg?height=120&width=120",
+  name: "Luffy",
+  username: "@LuffyTheKingofThePirates",
+  bio: "Sun god nika, the king of the pirates! Join me on my adventures to find the One Piece and become the Pirate King!",
+  avatar: "/images/luffy.jpeg?height=120&width=120",
   followers: 1247,
   following: 892,
   totalJams: 45,
