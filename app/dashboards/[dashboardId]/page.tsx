@@ -164,7 +164,7 @@ export default function Dashboard() {
   setJamName("")
   setJamGenre("")
   setIsCreateDialogOpen(false)
-  // await fetchAllJams()
+  await fetchAllJams()
 }
 async function fetchAllJams() {
   try {

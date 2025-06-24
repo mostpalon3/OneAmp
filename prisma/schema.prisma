@@ -33,19 +33,23 @@ model User {
   @@index([email], name: "users_email_idx")
   @@index([provider], name: "users_provider_idx")
 }
-
 model Profile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  followers Int      @default(0)
-  followed  Boolean  @default(false)
-  bio       String   @default("")
-  image     String   @default("")
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  followers        Int      @default(0)
+  followed         Boolean  @default(false)
+  bio              String   @default("")
+  image            String   @default("")
+  username         String?  @unique
+  favoriteGenre    String?
+  profileCompleted Boolean  @default(false)
+  
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Performance index for user profile lookups
+  // Performance indexes
   @@index([userId], name: "profile_userId_idx")
+  @@index([username], name: "profile_username_idx")
 }
 
 model Jam {

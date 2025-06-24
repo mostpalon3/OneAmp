@@ -1,10 +1,13 @@
-import { signIn, signOut, useSession } from "next-auth/react";
+"use client";
+
+import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { BiMusic } from "react-icons/bi"
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FaShare, FaUsers } from "react-icons/fa";
 import { handleShare } from "./jam/HandleShare";
+
 
 const NAVIGATION_LINKS = [
   { href: "#features", label: "Features" },
@@ -12,7 +15,21 @@ const NAVIGATION_LINKS = [
   { href: "#pricing", label: "Pricing" },
 ] as const;
 
-const Logo = () => (
+
+
+// Fix the component signature
+export function AppBar({ jamId }: { jamId?: string } = {}) {
+  const session = useSession();
+  const pathname = usePathname();
+  const router = useRouter();
+  
+  const isHomePage = pathname === "/";
+  const isJamPage = pathname === "/jam" || pathname.startsWith("/creator/" );
+  const isAuthenticated = Boolean(session.data?.user);
+
+
+
+  const Logo = () => (
   <Link href="/" className="flex items-center space-x-2">
     <div className="w-6 h-6 md:w-8 md:h-8 bg-black rounded-lg flex items-center justify-center">
       <BiMusic className="w-4 h-4 md:w-5 md:h-5 text-white" />
@@ -63,14 +80,15 @@ const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean
         <span className="text-wrap">Sign out</span>
       </Button>
     ) : (
+      <Link href="/auth">
       <Button 
         variant="ghost" 
         size="sm"
         className="text-gray-600 hover:text-black text-xs md:text-sm px-2 md:px-4" 
-        onClick={() => signIn()}
       >
         <span className="text-wrap">Sign In</span>
       </Button>
+      </Link>
     )}
     {isHomePage && (
       <Button className="bg-black text-white hover:bg-gray-800 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2">
@@ -79,15 +97,6 @@ const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean
     )}
   </div>
 );
-
-// Fix the component signature
-export function AppBar({ jamId }: { jamId?: string } = {}) {
-  const session = useSession();
-  const pathname = usePathname();
-  
-  const isHomePage = pathname === "/";
-  const isJamPage = pathname === "/jam" || pathname.startsWith("/creator/" );
-  const isAuthenticated = Boolean(session.data?.user);
 
   return (
     <header className="border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50">
