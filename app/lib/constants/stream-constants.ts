@@ -1,4 +1,4 @@
-export const REFRESH_INTERVAL_MS = 5 * 1000 // 10 seconds
+export const REFRESH_INTERVAL_MS = 1000 * 1000 // 1000 seconds
 
 export const PLATFORM_COLORS = {
   youtube: "text-red-500",

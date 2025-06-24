@@ -27,7 +27,7 @@ export interface CurrentVideo {
 }
 
 export interface MusicPreview {
-  creatorId?: string
+  jamId?: string
   platform: "youtube" | "spotify"
   videoId?: string
   spotifyId?: string

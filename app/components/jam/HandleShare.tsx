@@ -4,7 +4,7 @@ import { useState } from 'react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
 
-export const QRCodeShare = ({ creatorId }: { creatorId: string }) => {
+export const QRCodeShare = ({ jamId }: { jamId: string }) => {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [showQR, setShowQR] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -17,7 +17,7 @@ export const QRCodeShare = ({ creatorId }: { creatorId: string }) => {
 
     setIsGenerating(true);
     try {
-      const shareUrl = `${window.location.origin}/creator/${creatorId}`;
+      const shareUrl = `${window.location.origin}/creator/${jamId}`;
       const qrDataUrl = await QRCode.toDataURL(shareUrl, {
         width: 200,
         margin: 2,
@@ -38,7 +38,7 @@ export const QRCodeShare = ({ creatorId }: { creatorId: string }) => {
   };
 
   const copyUrl = async () => {
-    const shareUrl = `${window.location.origin}/creator/${creatorId}`;
+    const shareUrl = `${window.location.origin}/creator/${jamId}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast.success('Jam link copied to clipboard!');
@@ -51,7 +51,7 @@ export const QRCodeShare = ({ creatorId }: { creatorId: string }) => {
     if (!qrCodeDataUrl) return;
     
     const link = document.createElement('a');
-    link.download = `oneamp-jam-${creatorId}.png`;
+    link.download = `oneamp-jam-${jamId}.png`;
     link.href = qrCodeDataUrl;
     link.click();
     toast.success('QR Code downloaded!');
@@ -120,8 +120,8 @@ export const QRCodeShare = ({ creatorId }: { creatorId: string }) => {
 };
 
 // Keep the original handleShare function for backward compatibility
-export const handleShare = async (creatorId: string) => {
-  const shareUrl = `${window.location.origin}/creator/${creatorId}`;
+export const handleShare = async (jamId: string) => {
+  const shareUrl = `${window.location.origin}/creator/${jamId}`;
   
   if (navigator.share) {
     try {

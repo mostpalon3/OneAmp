@@ -166,7 +166,7 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
           // Only proceed if player is in a valid state
           if (playerState !== undefined && playerState !== null && playerState !== -1) {
             try {
-              player.loadVideoById({
+              player?.loadVideoById({
                 videoId: currentVideo.videoId,
                 startSeconds: 0
               });

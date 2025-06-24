@@ -2,9 +2,11 @@ import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId: string }>} ) {
     try {
         const session = await getServerSession();
+        const resolvedParams = await params; // ✅ Await the params
+        const jamId = String(resolvedParams.jamId);
         
         if (!session?.user?.email) {
             return NextResponse.json({
@@ -14,25 +16,10 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        // Get user from session
-        const user = await prismaClient.user.findFirst({
-            where: {
-                email: session.user.email
-            }
-        });
-
-        if (!user) {
-            return NextResponse.json({
-                message: "User not found"
-            }, {
-                status: 404
-            });
-        }
-
         // Get all unplayed streams for this user
         const streams = await prismaClient.stream.findMany({
             where: {
-                userId: user.id,
+                jamId: jamId,
                 played: false 
             },
             include: {
@@ -49,14 +36,14 @@ export async function GET(req: NextRequest) {
             // No more songs in queue - clear current stream (if exists)
             const existingCurrentStream = await prismaClient.currentStream.findUnique({
                 where: {
-                    userId: user.id
+                    jamId: jamId
                 }
             });
 
             if (existingCurrentStream) {
                 await prismaClient.currentStream.delete({
                     where: {
-                        userId: user.id
+                        jamId: jamId,
                     }
                 });
             }
@@ -88,12 +75,12 @@ export async function GET(req: NextRequest) {
 
         // Update or create current stream pointer
         await prismaClient.currentStream.upsert({
-            where: { userId: user.id },
+            where: { jamId: jamId },
             update: {
                 streamId: updatedStream.id
             },
             create: {
-                userId: user.id,
+                jamId: jamId,
                 streamId: updatedStream.id
             }
         });
@@ -116,7 +103,3 @@ export async function GET(req: NextRequest) {
     }
 }
 
-// Also support POST method for consistency
-export async function POST(req: NextRequest) {
-    return GET(req);
-}

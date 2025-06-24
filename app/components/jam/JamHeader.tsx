@@ -2,8 +2,34 @@
 
 import { FaEye, FaClock } from "react-icons/fa"
 import { BiTrendingUp } from "react-icons/bi"
+import { useParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { fetchJamHeaderDetails } from "@/app/lib/utils/api-utils"
 
 export function JamHeader() {
+  const params = useParams();
+  const jamId = String(params.jamId);
+
+  // Store jam details in state
+  const [jamDetails, setJamDetails] = useState<any>(null);
+
+  useEffect(() => {
+    if (jamId) {
+      fetchJamHeaderDetails(jamId)
+        .then((data) => {
+          if (data) {
+            setJamDetails(data);
+          } else {
+            setJamDetails(null);
+          }
+        })
+        .catch((error) => {
+          setJamDetails(null);
+          console.error("Error fetching jam header details:", error);
+        });
+    }
+  }, [jamId]);
+
   return (
     <div className="mb-6">
       <div className="flex items-center space-x-4 mb-2">
@@ -11,8 +37,12 @@ export function JamHeader() {
           <span className="text-white font-bold text-lg">DJ</span>
         </div>
         <div>
-          <h1 className="md:text-2xl text-md font-bold text-black">Nirvana's House Party</h1>
-          <p className="text-gray-600 md:text-sm text-xs">Collaborative Music Queue</p>
+          <h1 className="md:text-2xl text-md font-bold text-black">
+            {jamDetails?.title || ""}
+          </h1>
+          <p className="text-gray-600 md:text-sm text-xs">
+            {jamDetails?.genre || "Collaborative Music Queue"}
+          </p>
         </div>
       </div>
       <div className="flex items-center space-x-6 text-sm text-gray-500">

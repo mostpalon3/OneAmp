@@ -1,18 +1,23 @@
 "use client";
 
+import React from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import JamPage from "../components/JamPage";
+import JamPage from "../../components/JamPage";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
+  const params = useParams();
+  const jamId = params.jamId as string;
   const router = useRouter();
 
   useEffect(() => {
     if (status === "loading") return; // Still loading
     if (!session) {
-      router.push("/"); // Redirect to home if not authenticated
+        setTimeout(() => {
+          router.push("/"); // Redirect to home if not authenticated
+        }, 1200);
       return;
     }
   }, [session, status, router]);
@@ -33,5 +38,5 @@ export default function Dashboard() {
     );
   }
 
-  return <JamPage creatorId={session.user.id} playVideo={true} />;
+  return <JamPage jamId={jamId} playVideo={true} />;
 }

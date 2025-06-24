@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
 // import { getServerSession } from "next-auth";
 // import { GET as handler } from "@/app/api/auth/[...nextauth]/route";
 
 const CreateStreamSchema = z.object({
-  creatorId: z.string(),
+  jamId: z.string(),
   url: z.string()
 });
 
@@ -129,9 +130,18 @@ async function getVideoDetails(videoId: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession();
   try {
+    const session = await getServerSession(authOptions); // 👈 Pass authOptions
     const data = CreateStreamSchema.parse(await req.json());
+    const isDev = process.env.NODE_ENV === "development";
+
+    if (!session?.user?.id && !isDev) {
+      return NextResponse.json({
+        message: "Authentication required"
+      }, {
+        status: 403
+      });
+    }
 
     // Validate YouTube URL
     if (!isValidYouTubeUrl(data.url)) {
@@ -142,9 +152,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Extract video ID using the helper function
+    // Extract video ID
     const extractedId = extractVideoId(data.url);
-
     if (!extractedId) {
       return NextResponse.json({
         message: "Could not extract video ID from the provided YouTube URL"
@@ -153,16 +162,26 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Use YouTube Data API v3 instead of youtube-search-api
+    // Get video details
     const res = await getVideoDetails(extractedId);
-
     const thumbnails = res.thumbnail.thumbnails;
     thumbnails.sort((a: { width: number }, b: { width: number }) => a.width < b.width ? -1 : 1);
+
+    // Ensure userId is always a string
+    if (!session?.user?.id && !isDev) {
+      return NextResponse.json({
+        message: "Authentication required"
+      }, {
+        status: 403
+      });
+    }
+
 
     const stream = await prismaClient.stream.create({
       data: {
         title: res.title,
-        userId: data.creatorId,
+        userId: session?.user?.id ?? "dev-user", // fallback for dev mode
+        jamId: data.jamId,
         url: data.url,
         extractedId,
         type: "YouTube",
@@ -174,6 +193,7 @@ export async function POST(req: NextRequest) {
         submittedBy: session?.user?.name ?? "anonymous",
       }
     });
+
     return NextResponse.json({
       message: "Stream added successfully",
       ...stream,
@@ -191,14 +211,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const creatorId = req.nextUrl.searchParams.get('creatorId');
+  //see here we are extracting jamId from the request URL, but in other cases where we used params , that were from the request api url 
+  const { searchParams } = new URL(req.url);
+  const jamId = String(searchParams.get('jamId'));
   const session = await getServerSession();
   
-  if (!creatorId) {
-    return NextResponse.json({
-      message: "Creator ID is required"
-    }, { status: 411 });
-  }
 
   if (!session?.user?.email) {
     return NextResponse.json({
@@ -218,7 +235,7 @@ export async function GET(req: NextRequest) {
       // Optimized streams query with selective includes
       prismaClient.stream.findMany({
         where: {
-          userId: creatorId,
+          jamId: jamId,
           played: false
         },
         select: {
@@ -246,7 +263,7 @@ export async function GET(req: NextRequest) {
       
       // Optimized active stream query
       prismaClient.currentStream.findUnique({
-        where: { userId: creatorId },
+        where: { jamId: jamId },
         select: {
           stream: {
             select: {

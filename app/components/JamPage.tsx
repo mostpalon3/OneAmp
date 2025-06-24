@@ -15,10 +15,10 @@ import { QRCodeShare } from "./jam/HandleShare"
 import { Toaster } from "react-hot-toast"
 
 export default function JamPage({
-  creatorId,
+  jamId,
   playVideo = false
 }: {
-  creatorId: string,
+  jamId: string,
   playVideo: boolean
 }) {
   const [queue, setQueue] = useState<Song[]>([])
@@ -40,7 +40,7 @@ export default function JamPage({
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
   const fetchInitialStreams = async () => {
-    const streams = await refreshStreams(creatorId);
+    const streams = await refreshStreams(jamId);
     if (streams) {
       const transformedStreams = streams.streams.map((stream: any) => ({
         id: stream.id,
@@ -113,7 +113,7 @@ export default function JamPage({
     }, REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [creatorId]);
+  }, [jamId]);
 
   const handleVote = async (songId: number | string, isUpvote: boolean) => {
     if (!songId) {
@@ -160,7 +160,7 @@ export default function JamPage({
   const handlePlayNext = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/streams/nextstream`, {
+      const response = await fetch(`/api/streams/nextstream/${jamId}`, {
         method: 'GET',
       });
       
@@ -223,7 +223,7 @@ export default function JamPage({
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
-      <AppBar creatorId={creatorId} />
+      <AppBar jamId={jamId} />
 
       <div className="flex-1 md:overflow-hidden">
         <div className="container mx-auto px-4 lg:px-6 py-6 h-full">
@@ -242,7 +242,7 @@ export default function JamPage({
                 />
                 <div className="order-1 lg:hidden">
                   <AddMusicForm 
-                    creatorId={creatorId}
+                    jamId={jamId}
                     onSongAdded={handleSongAdded}
                   />
                 </div>
@@ -255,7 +255,7 @@ export default function JamPage({
               <div className="space-y-6">
                 <div className="hidden lg:block">
                   <AddMusicForm 
-                    creatorId={creatorId}
+                    jamId={jamId}
                     onSongAdded={handleSongAdded}
                   />
                 </div>
@@ -273,7 +273,7 @@ export default function JamPage({
                 {/* Replace QuickActions with QRCodeShare */}
                 <div className="bg-white rounded-lg p-4 shadow-sm border">
                   <h3 className="font-medium text-gray-900 mb-3">Share Stream</h3>
-                  <QRCodeShare creatorId={creatorId} />
+                  <QRCodeShare jamId={jamId} />
                 </div>
               </div>
             </div>

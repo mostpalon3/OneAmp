@@ -1,5 +1,5 @@
 import { prismaClient } from "@/app/lib/db";
-import NextAuth from "next-auth"
+import NextAuth, { NextAuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google";
 
 declare module "next-auth" {
@@ -15,7 +15,7 @@ declare module "next-auth" {
   }
 }
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -33,7 +33,7 @@ const handler = NextAuth({
       }
       
       try {
-        const result = await prismaClient.user.upsert({
+        await prismaClient.user.upsert({
           where: { email: user.email },
           update: {
             name: user.name || "",
@@ -47,10 +47,10 @@ const handler = NextAuth({
           }
         });
         
-        console.log("User upserted successfully:", result.id);
+        console.log("✅ User upserted successfully");
         return true;
       } catch (error) {
-        console.error("Database error during sign in:", error);
+        console.error("❌ Database error during sign in:", error);
         return false;
       }
     },
@@ -58,21 +58,8 @@ const handler = NextAuth({
     async session({ session, token }) {
       if (session.user?.email) {
         try {
-          // Use upsert to handle missing user scenario
-          const user = await prismaClient.user.upsert({
+          const user = await prismaClient.user.findUnique({
             where: { email: session.user.email },
-            update: {
-              // Update existing user with latest session data
-              name: session.user.name || "",
-              image: session.user.image || "",
-            },
-            create: {
-              // Create user if they don't exist (database was reset)
-              email: session.user.email,
-              name: session.user.name || "",
-              image: session.user.image || "",
-              provider: "GOOGLE",
-            },
             select: {
               id: true,
               email: true,
@@ -83,23 +70,24 @@ const handler = NextAuth({
             }
           });
           
-          // Update session with database user data
-          session.user = {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            image: user.image,
-            provider: user.provider,
-            createdAt: user.createdAt,
-          };
-          
+          if (user) {
+            session.user = {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              image: user.image,
+              provider: user.provider,
+              createdAt: user.createdAt,
+            };
+          }
         } catch (error) {
-          console.error("Error in session callback:", error);
+          console.error("❌ Error in session callback:", error);
         }
       }
       return session;
     }
   }
-});
+};
 
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };

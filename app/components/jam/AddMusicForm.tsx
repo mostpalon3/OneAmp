@@ -12,14 +12,15 @@ import { detectPlatform } from "@/app/lib/utils/platform-detection"
 import { formatDuration } from "@/app/lib/utils/format-utils"
 import { fetchYouTubeVideoPreview, submitStream } from "@/app/lib/utils/api-utils"
 import { MusicPreview } from "@/app/lib/types/jam-types"
+import { useParams } from "next/navigation"
 
 interface AddMusicFormProps {
-  creatorId: string
+  jamId: string
   onSongAdded: () => void
   // onEmptyQueue: () => void
 }
 
-export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
+export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
   const [musicUrl, setMusicUrl] = useState("")
   const [musicPreview, setMusicPreview] = useState<MusicPreview | null>(null)
   const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null)
@@ -27,6 +28,8 @@ export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const params = useParams();
+
 
   useEffect(() => {
     if (musicUrl) {
@@ -43,7 +46,7 @@ export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
           fetchYouTubeVideoPreview(musicUrl)
             .then((videoData) => {
               setMusicPreview({
-                creatorId,
+                jamId,
                 platform: "youtube",
                 videoId,
                 title: videoData.title,
@@ -91,7 +94,7 @@ export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
       setMusicPreview(null)
       setError(null)
     }
-  }, [musicUrl, creatorId])
+  }, [musicUrl, jamId])
 
   const handleSubmitMusic = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,7 +104,7 @@ export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
 
     try {
       console.log("📤 Submitting music...");
-      const responseData = await submitStream(creatorId, musicUrl);
+      const responseData = await submitStream(jamId,musicUrl);
       const streamId = responseData.id;
 
       if (!streamId) {
@@ -122,7 +125,6 @@ export function AddMusicForm({ creatorId, onSongAdded }: AddMusicFormProps) {
         console.error('Auto-upvote failed:', voteError);
       }
 
-      console.log("✅ Music submitted successfully");
       setMusicUrl("")
       setMusicPreview(null)
       setIsValidUrl(null)

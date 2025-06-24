@@ -23,9 +23,9 @@ export async function fetchYouTubeVideoPreview(url: string) {
   }
 }
 
-export async function refreshStreams(creatorId: string) {
+export async function refreshStreams(jamId: string) {
   try {
-    const res = await fetch("/api/streams/?creatorId=" + creatorId);
+    const res = await fetch("/api/streams/?jamId=" + jamId);
     
     if (!res.ok) {
       console.warn("Failed to fetch streams:", res.status);
@@ -40,19 +40,20 @@ export async function refreshStreams(creatorId: string) {
   }
 }
 
-export async function submitStream(creatorId: string, url: string) {
+export async function submitStream(jamId: string,url: string) {
   const response = await fetch("/api/streams", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      creatorId: creatorId,
+      jamId: jamId,
       url: url,
     }),
   });
 
   if (!response.ok) {
+    console.error("Failed to submit stream:", response);
     throw new Error('Failed to submit stream');
   }
 
@@ -76,3 +77,18 @@ export async function voteOnStream(streamId: string, isUpvote: boolean) {
 
   return response.json();
 }
+
+export async function fetchJamHeaderDetails(jamId: string) {
+      try {
+        const response = await fetch(`/api/jams/${jamId}`);
+        if (!response.ok) {
+          console.warn("Failed to fetch jam details:", response.status);
+          return null;
+        }
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Error fetching jam details:", error);
+        return null;
+      }
+    }

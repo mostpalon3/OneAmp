@@ -10,7 +10,7 @@ export function Redirect(){
     const router = useRouter();
     useEffect(() => {
         if (session.status === "authenticated") {
-            router.push("/jam");
+            router.push(`/dashboards/${session.data?.user?.id}`);
         } else if (session.status === "unauthenticated") {
             router.push("/");
         }

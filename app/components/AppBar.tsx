@@ -35,7 +35,7 @@ const HomeNavigation = () => (
   </nav>
 );
 
-const JamPageStatus = ({ creatorId }: { creatorId: string }) => (
+const JamPageStatus = ({ jamId }: { jamId: string }) => (
   <div className="flex items-center space-x-3 md:space-x-4">
     <div className="flex items-center space-x-1 md:space-x-2 bg-gray-100 rounded-full px-2 md:px-3 py-1">
       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
@@ -45,7 +45,7 @@ const JamPageStatus = ({ creatorId }: { creatorId: string }) => (
       <FaUsers className="self-center w-full h-3 md:w-4 md:h-4" />
       <span className="text-[10px] text-center md:text-sm">1,247</span>
     </div>
-    <Button variant="ghost" size="sm" className="p-1 md:p-2" onClick={() => handleShare(creatorId)} >
+    <Button variant="ghost" size="sm" className="p-1 md:p-2" onClick={() => handleShare(jamId)} >
       <FaShare className="w-3 h-3 md:w-4 md:h-4" />
     </Button>
   </div>
@@ -81,7 +81,7 @@ const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean
 );
 
 // Fix the component signature
-export function AppBar({ creatorId }: { creatorId?: string } = {}) {
+export function AppBar({ jamId }: { jamId?: string } = {}) {
   const session = useSession();
   const pathname = usePathname();
   
@@ -95,7 +95,7 @@ export function AppBar({ creatorId }: { creatorId?: string } = {}) {
         <Logo />
         
         {isHomePage && <HomeNavigation />}
-        {isJamPage && creatorId && <JamPageStatus creatorId={creatorId} />}
+        {isJamPage && jamId && <JamPageStatus jamId={jamId} />}
         
         <AuthButtons isAuthenticated={isAuthenticated} isHomePage={isHomePage} />
       </div>
