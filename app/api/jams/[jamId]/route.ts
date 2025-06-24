@@ -1,18 +1,16 @@
 import prismaClient from "@/app/lib/db";
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-
-
-
-export async function GET(request: Request, { params }: { params: { jamId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ jamId: string }> }) {
     try {
+        const resolvedParams = await params;
+        const jamId = resolvedParams.jamId;
         const session = await getServerSession();
         const isDev = process.env.NODE_ENV === "development";
         if (!session && !isDev) {
             return NextResponse.json("Unauthorized", { status: 401 });
         }
-        const jamId = String(params.jamId);
         console.log("Fetching jam with ID:", jamId);
         const jam = await prismaClient.jam.findUnique({
             where: {
@@ -45,14 +43,15 @@ export async function GET(request: Request, { params }: { params: { jamId: strin
     }
 }
 
-export async function DELETE(request: Request, { params }: { params: { jamId: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ jamId: string }> }) {
     try {
+        const resolvedParams = await params;
+        const jamId = resolvedParams.jamId;
         const session = await getServerSession();
         const isDev = process.env.NODE_ENV === "development";
         if (!session && !isDev) {
             return NextResponse.json("Unauthorized", { status: 401 });
         }
-        const jamId = String(params.jamId);
         console.log("Deleting jam with ID:", jamId);
         const deletedJam = await prismaClient.jam.delete({
             where: {

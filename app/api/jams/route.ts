@@ -2,7 +2,7 @@ import prismaClient from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/app/lib/auth"
 
 const devUserId = "1e0ca34f-f3fe-482f-8d9a-0f3062d06f13";
 
