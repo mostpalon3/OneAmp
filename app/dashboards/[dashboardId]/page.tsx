@@ -207,13 +207,10 @@ useEffect(() => {
   fetchAllJams()
 }, [])
 
-  const handleJoinJam = async (url: string) => {
+  const handleJoinJam = async (jamId: string) => {
     if (!jamId.trim()) return
 
     setIsJoining(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     console.log("Joining jam with ID:", jamId)
 
@@ -222,7 +219,7 @@ useEffect(() => {
     setIsJoinDialogOpen(false)
 
     // Redirect to the jam page
-    router.push(url)
+    router.push(`/creator/${jamId}`)
   }
 
 
@@ -312,7 +309,7 @@ useEffect(() => {
                       className="border-gray-300 focus:border-black"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && jamId.trim()) {
-                          // handleJoinJam()
+                          handleJoinJam(jamId)
                         }
                       }}
                     />
@@ -326,7 +323,7 @@ useEffect(() => {
                       Cancel
                     </Button>
                     <Button
-                      // onClick={handleJoinJam}
+                      onClick={() => handleJoinJam(jamId)}
                       disabled={!jamId.trim() || isJoining}
                       className="bg-black text-white hover:bg-gray-800"
                     >

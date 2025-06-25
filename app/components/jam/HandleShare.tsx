@@ -56,6 +56,14 @@ export const QRCodeShare = ({ jamId }: { jamId: string }) => {
     link.click();
     toast.success('QR Code downloaded!');
   };
+    const copyJamCode = async () => {
+    try {
+      await navigator.clipboard.writeText(jamId);
+      toast.success('Jam code copied to clipboard!');
+    } catch (error) {
+      toast.error('Failed to copy jam code');
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -74,7 +82,7 @@ export const QRCodeShare = ({ jamId }: { jamId: string }) => {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M4 4h4.01M4 16h4.01" />
             </svg>
-            Share with QR Code
+            Share Jam
           </>
         )}
       </button>
@@ -98,6 +106,12 @@ export const QRCodeShare = ({ jamId }: { jamId: string }) => {
               className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded text-sm transition-colors"
             >
               Copy Link
+            </button>
+            <button
+              onClick={copyJamCode}
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded text-sm transition-colors"
+            >
+              Copy Code
             </button>
             <button
               onClick={downloadQR}

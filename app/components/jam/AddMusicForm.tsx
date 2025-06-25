@@ -68,7 +68,9 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
           setIsValidUrl(false)
           setMusicPreview(null)
         }
-      } else if (platform === "spotify") {
+      } 
+      
+      else if (platform === "spotify") {
         const trackId = extractSpotifyId(musicUrl)
         if (trackId) {
           setIsValidUrl(true)
@@ -88,7 +90,9 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
         setIsValidUrl(false)
         setMusicPreview(null)
       }
-    } else {
+    }
+    
+    else {
       setIsValidUrl(null)
       setDetectedPlatform(null)
       setMusicPreview(null)
