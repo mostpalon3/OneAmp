@@ -17,7 +17,7 @@ export default function CreatorPage() {
         if (!session) {
           setTimeout(() => {
             router.push("/"); // Redirect to home if not authenticated
-          }, 1200);
+          }, 1000);
           return;
         }
       }, [session, status, router]);

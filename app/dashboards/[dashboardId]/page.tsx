@@ -37,6 +37,8 @@ import {
 import { BiMusic, BiTrendingUp } from "react-icons/bi"
 import { HiOutlineSparkles } from "react-icons/hi"
 import { useRouter } from "next/navigation"
+import { AppBar } from "@/app/components/AppBar"
+import { Redirect } from "@/app/components/Redirect"
 
 // Mock user data
 const currentUser = {
@@ -75,55 +77,6 @@ const genres = [
   "Mixed",
 ]
 
-// Mock data for user's jams
-const userJams = [
-  {
-    id: 1,
-    name: "Late Night Vibes",
-    createdAt: "2024-01-15",
-    status: "live",
-    viewers: 247,
-    duration: "2h 15m",
-    genre: "Electronic",
-    totalSongs: 23,
-    totalVotes: 156,
-  },
-  {
-    id: 2,
-    name: "Chill Sunday Session",
-    createdAt: "2024-01-14",
-    status: "ended",
-    viewers: 89,
-    duration: "1h 42m",
-    genre: "Chill",
-    totalSongs: 15,
-    totalVotes: 67,
-  },
-  {
-    id: 3,
-    name: "Friday Night Party",
-    createdAt: "2024-01-12",
-    status: "ended",
-    viewers: 312,
-    duration: "3h 8m",
-    genre: "Dance",
-    totalSongs: 34,
-    totalVotes: 289,
-  },
-  {
-    id: 4,
-    name: "Acoustic Afternoon",
-    createdAt: "2024-01-10",
-    status: "ended",
-    viewers: 156,
-    duration: "1h 30m",
-    genre: "Acoustic",
-    totalSongs: 12,
-    totalVotes: 78,
-  },
-]
-
-
 export default function Dashboard() {
   const [jamName, setJamName] = useState("")
   const [jamGenre, setJamGenre] = useState("")
@@ -132,9 +85,53 @@ export default function Dashboard() {
   const [isJoining, setIsJoining] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false)
-  const [jams, setJams] = useState(userJams)
+  type Jam = {
+    id: number
+    name: string
+    createdAt: string
+    status: string
+    viewers: number
+    duration: string
+    genre: string
+    totalSongs: number
+    totalVotes: number
+  }
+  const [jams, setJams] = useState<Jam[]>([])
   const [user, setUser] = useState(currentUser)
   const router = useRouter();
+
+  async function fetchUserProfile() {
+    try {
+      const response = await fetch("/api/complete-profile", {
+        method: "GET",
+      })
+      if (!response.ok) {
+        throw new Error("Failed to fetch user profile")
+      }
+      const data = await response.json()
+
+      const userDetails = {
+        id: data.profile.id,
+        name: data.user.name,
+        username: data.profile.username,
+        bio: "Your bio goes here. Share something about yourself!",
+        avatar: data.profile.image,
+        followers: 1247,
+        following: 892,
+        totalJams: jams.length,
+        totalLikes: 3420,
+        isFollowing: false,
+      }
+      setUser(userDetails)
+    } catch (error) {
+      console.error("Error fetching user profile:", error)
+      throw error
+    }
+  }
+  useEffect(() => {
+    // Fetch user profile when the component mounts
+    fetchUserProfile()
+  }, [])
 
   async function handleCreateJam() {
     if (!jamName.trim() || !jamGenre) return
@@ -210,7 +207,7 @@ useEffect(() => {
   fetchAllJams()
 }, [])
 
-  const handleJoinJam = async (creatorId: string) => {
+  const handleJoinJam = async (url: string) => {
     if (!jamId.trim()) return
 
     setIsJoining(true)
@@ -225,7 +222,7 @@ useEffect(() => {
     setIsJoinDialogOpen(false)
 
     // Redirect to the jam page
-    router.push(`/creator/${creatorId}`)
+    router.push(url)
   }
 
 
@@ -280,7 +277,8 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <Redirect/>
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="container mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
@@ -426,6 +424,7 @@ useEffect(() => {
           </div>
         </div>
       </header>
+
 
       <div className="container mx-auto px-4 lg:px-6 py-8">
         <div className="grid lg:grid-cols-4 gap-8">

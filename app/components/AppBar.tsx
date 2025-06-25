@@ -24,7 +24,7 @@ export function AppBar({ jamId }: { jamId?: string } = {}) {
   const router = useRouter();
   
   const isHomePage = pathname === "/";
-  const isJamPage = pathname === "/jam" || pathname.startsWith("/creator/" );
+  const isJamPage = pathname.startsWith("/jams/" ) || pathname.startsWith("/creator/" );
   const isAuthenticated = Boolean(session.data?.user);
 
 
