@@ -39,8 +39,6 @@ import { HiOutlineSparkles } from "react-icons/hi"
 import { useRouter } from "next/navigation"
 import { AppBar } from "@/app/components/AppBar"
 import { Redirect } from "@/app/components/Redirect"
-import { useJamCode } from '../../lib/hooks/useJamCode';
-import toast from "react-hot-toast"
 
 // Mock user data
 const currentUser = {
@@ -101,8 +99,6 @@ export default function Dashboard() {
   const [jams, setJams] = useState<Jam[]>([])
   const [user, setUser] = useState(currentUser)
   const router = useRouter();
-  const { isValidCode, joinJam } = useJamCode();
-  const [jamArray, setJamArray] = useState<string[]>([])
 
   async function fetchUserProfile() {
     try {
@@ -135,7 +131,7 @@ export default function Dashboard() {
   useEffect(() => {
     // Fetch user profile when the component mounts
     fetchUserProfile()
-  }, [setJams,jams,])
+  }, [setJams])
 
   async function handleCreateJam() {
     if (!jamName.trim() || !jamGenre) return
@@ -194,6 +190,7 @@ async function fetchAllJams() {
       totalVotes: jam.likes,
       }
     })
+    console.log("Fetched jams:", newJam)
     setJams(newJam)
     console.log("Jams state updated:", jams)
     setIsCreating(false)
@@ -210,29 +207,22 @@ useEffect(() => {
   fetchAllJams()
 }, [])
 
-  const handleJoinJam = async (code: string) => {
+  const handleJoinJam = async (url: string) => {
     if (!jamId.trim()) return
 
     setIsJoining(true)
 
-    const validCode = isValidCode(code);
-    if (!validCode) {
-      toast.error("Invalid jam code. Please enter a valid code.");
-      setIsJoining(false);
-      return;
-    }else{
-      toast.success("Joining jam with code: " + code);
-      const url = joinJam(code, jamArray);
-      setIsJoining(false)
-      setJamId("")
-      setIsJoinDialogOpen(false)
-      // Redirect to the jam page
-      if (url) {
-        router.push(url);
-      } else {
-        toast.error("Could not join jam. Invalid URL.");
-      }
-    }
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    console.log("Joining jam with ID:", jamId)
+
+    setIsJoining(false)
+    setJamId("")
+    setIsJoinDialogOpen(false)
+
+    // Redirect to the jam page
+    router.push(url)
   }
 
 
@@ -322,7 +312,7 @@ useEffect(() => {
                       className="border-gray-300 focus:border-black"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && jamId.trim()) {
-                          // handleJoinJam(jamId)
+                          // handleJoinJam()
                         }
                       }}
                     />
@@ -558,12 +548,12 @@ useEffect(() => {
                           </div>
 
                           <div className="flex items-center space-x-2">
-                            
+                            {jam.status === "live" && (
                               <Button size="sm" className="bg-black text-white hover:bg-gray-800" onClick={() => enterJam(jam.id)}>
                                 <FaPlay className="w-3 h-3 mr-1" />
                                 Enter
                               </Button>
-                            
+                            )}
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -627,6 +617,12 @@ useEffect(() => {
                             <FaCalendarAlt className="w-3 h-3" />
                             <span>Created {jam.createdAt}</span>
                           </div>
+                          {jam.status === "live" && (
+                            <div className="flex items-center space-x-1 text-sm text-green-600">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span className="font-medium">Broadcasting</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>

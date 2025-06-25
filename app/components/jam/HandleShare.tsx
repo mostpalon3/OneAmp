@@ -3,22 +3,11 @@
 import { useState } from 'react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
-import { useJamCode } from '../../lib/hooks/useJamCode';
 
-interface JamShareProps {
-  jamId: string;
-  showJamCode?: boolean;
-}
-
-export const JamShare = ({ jamId, showJamCode = true }: JamShareProps) => {
+export const QRCodeShare = ({ jamId }: { jamId: string }) => {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [showQR, setShowQR] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  
-  const { generateCode, generateUrl } = useJamCode();
-  
-  const jamCode = generateCode(jamId);
-  const shareUrl = generateUrl(jamId);
 
   const generateQRCode = async () => {
     if (qrCodeDataUrl) {
@@ -28,6 +17,7 @@ export const JamShare = ({ jamId, showJamCode = true }: JamShareProps) => {
 
     setIsGenerating(true);
     try {
+      const shareUrl = `${window.location.origin}/creator/${jamId}`;
       const qrDataUrl = await QRCode.toDataURL(shareUrl, {
         width: 200,
         margin: 2,
@@ -48,6 +38,7 @@ export const JamShare = ({ jamId, showJamCode = true }: JamShareProps) => {
   };
 
   const copyUrl = async () => {
+    const shareUrl = `${window.location.origin}/creator/${jamId}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast.success('Jam link copied to clipboard!');
@@ -56,36 +47,22 @@ export const JamShare = ({ jamId, showJamCode = true }: JamShareProps) => {
     }
   };
 
-  const copyJamCode = async () => {
-    try {
-      await navigator.clipboard.writeText(jamCode);
-      toast.success('Jam code copied to clipboard!');
-    } catch (error) {
-      toast.error('Failed to copy jam code');
-    }
-  };
-
   const downloadQR = () => {
     if (!qrCodeDataUrl) return;
     
     const link = document.createElement('a');
-    link.download = `oneamp-jam-${jamCode}.png`;
+    link.download = `oneamp-jam-${jamId}.png`;
     link.href = qrCodeDataUrl;
     link.click();
     toast.success('QR Code downloaded!');
   };
 
-  const hideSharing = () => {
-    setShowQR(false);
-  };
-
   return (
     <div className="space-y-4">
-      {/* Main sharing button */}
       <button
         onClick={generateQRCode}
         disabled={isGenerating}
-        className="w-full bg-black hover:opacity-85 disabled:opacity-50 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-black hover:opacity-85 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isGenerating ? (
           <>
@@ -97,12 +74,11 @@ export const JamShare = ({ jamId, showJamCode = true }: JamShareProps) => {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M4 4h4.01M4 16h4.01" />
             </svg>
-            Share Jam
+            Share with QR Code
           </>
         )}
       </button>
 
-      {/* QR Code Display with all sharing options */}
       {showQR && qrCodeDataUrl && (
         <div className="bg-white p-4 rounded-lg border shadow-sm space-y-3">
           <div className="text-center">
@@ -114,40 +90,28 @@ export const JamShare = ({ jamId, showJamCode = true }: JamShareProps) => {
             <p className="text-sm text-gray-600 mt-2">
               Scan to join the jam
             </p>
-            <div className="mt-3 p-3 bg-gray-100 rounded-lg border">
-              <p className="text-xs text-gray-500 mb-1">Or use code:</p>
-              <div className="text-2xl font-mono font-bold text-gray-800 tracking-wider">
-                {jamCode}
-              </div>
-            </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-2">
+          <div className="flex gap-2">
             <button
               onClick={copyUrl}
-              className="bg-slate-50 hover:bg-gray-200 text-gray-700 py-2 px-2 rounded text-xs transition-colors"
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded text-sm transition-colors"
             >
               Copy Link
             </button>
             <button
-              onClick={copyJamCode}
-              className="bg-slate-50 hover:bg-gray-200 text-gray-700 py-2 px-2 rounded text-xs font-medium transition-colors"
-            >
-              Copy Code
-            </button>
-            <button
               onClick={downloadQR}
-              className="bg-slate-50 hover:bg-gray-200 text-gray-800 py-2 px-2 rounded text-xs transition-colors"
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded text-sm transition-colors"
             >
-              Download
+              Download QR
             </button>
           </div>
           
           <button
-            onClick={hideSharing}
+            onClick={() => setShowQR(false)}
             className="w-full text-gray-500 hover:text-gray-700 py-1 text-sm transition-colors"
           >
-            Hide
+            Hide QR Code
           </button>
         </div>
       )}
@@ -155,6 +119,7 @@ export const JamShare = ({ jamId, showJamCode = true }: JamShareProps) => {
   );
 };
 
+// Keep the original handleShare function for backward compatibility
 export const handleShare = async (jamId: string) => {
   const shareUrl = `${window.location.origin}/creator/${jamId}`;
   

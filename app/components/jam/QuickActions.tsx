@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FaHeart, FaShare } from "react-icons/fa"
-import { handleShare } from "./JamShare"
+import { handleShare } from "./HandleShare"
 
 interface QuickActionsProps {
   creatorId: string
