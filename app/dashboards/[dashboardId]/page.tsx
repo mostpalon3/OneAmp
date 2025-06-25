@@ -37,7 +37,6 @@ import {
 import { BiMusic, BiTrendingUp } from "react-icons/bi"
 import { HiOutlineSparkles } from "react-icons/hi"
 import { useRouter } from "next/navigation"
-import { AppBar } from "@/app/components/AppBar"
 import { Redirect } from "@/app/components/Redirect"
 
 // Mock user data
