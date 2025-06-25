@@ -131,7 +131,7 @@ export default function Dashboard() {
   useEffect(() => {
     // Fetch user profile when the component mounts
     fetchUserProfile()
-  }, [])
+  }, [setJams])
 
   async function handleCreateJam() {
     if (!jamName.trim() || !jamGenre) return

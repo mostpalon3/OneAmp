@@ -7,6 +7,7 @@ import { BiMusic } from "react-icons/bi"
 import { usePathname, useRouter } from "next/navigation";
 import { FaShare, FaUsers } from "react-icons/fa";
 import { handleShare } from "./jam/HandleShare";
+import JamPage from "./JamPage";
 
 
 const NAVIGATION_LINKS = [
@@ -94,6 +95,13 @@ const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean
       <Button className="bg-black text-white hover:bg-gray-800 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2">
         <span className="text-wrap">Get Started</span>
       </Button>
+    )}
+    {isJamPage && (
+              <Link href={`/dashboards/${session.data?.user?.id}`} >
+                      <Button className="bg-black text-white hover:bg-gray-800 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2">
+          <span className="text-wrap">Dashboard</span>
+                </Button>
+        </Link>
     )}
   </div>
 );
