@@ -22,7 +22,6 @@ export default function JamPage({
   playVideo: boolean
 }) {
   const [queue, setQueue] = useState<Song[]>([])
-  const [currentPlaying, setCurrentPlaying] = useState<"spotify" | "youtube">("youtube")
   const [currentVideo, setCurrentVideo] = useState<CurrentVideo>({
     id: 0,
     title: "No tracks available",
@@ -95,7 +94,6 @@ export default function JamPage({
       
       setWasEmpty(isCurrentlyEmpty);
       setQueue(sortedStreams);
-      setCurrentPlaying(streams.activeStream?.type?.toLowerCase() || "youtube");
       setCurrentVideo(currentTransformedStream);
     }
   };
@@ -205,7 +203,6 @@ export default function JamPage({
     totalVotes: queue.reduce((sum, song) => sum + Math.abs(song.votes), 0),
     songsInQueue: queue.length,
     youtubeVideos: queue.filter((song) => song.platform === "youtube").length,
-    spotifyTracks: queue.filter((song) => song.platform === "spotify").length,
   };
 
   // Handle auto-play when shouldAutoPlay changes
@@ -234,8 +231,6 @@ export default function JamPage({
             <div className="lg:col-span-2 md:overflow-y-auto scrollbar-hide">
               <div className="space-y-6">
                 <NowPlaying 
-                  currentPlaying={currentPlaying}
-                  setCurrentPlaying={setCurrentPlaying}
                   currentVideo={currentVideo}
                   onVideoEnd={handleVideoEnd}
                   onTimeUpdate={handleTimeUpdate}

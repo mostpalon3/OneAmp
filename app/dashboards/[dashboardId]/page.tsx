@@ -676,7 +676,7 @@ useEffect(() => {
                     </div>
                     <div>
                       <h4 className="font-medium text-black text-sm">Add Music</h4>
-                      <p className="text-xs text-gray-600">Share YouTube and Spotify links to build your queue</p>
+                      <p className="text-xs text-gray-600">Share YouTube links to build your queue</p>
                     </div>
                   </div>
 

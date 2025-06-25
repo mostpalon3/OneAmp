@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FaMusic, FaSpotify, FaYoutube, FaCheck, FaTimes, FaPlus } from "react-icons/fa"
-import { extractYouTubeId, extractSpotifyId } from "@/app/lib/utils/url-extractors"
+import { FaMusic, FaYoutube, FaCheck, FaTimes, FaPlus } from "react-icons/fa"
+import { extractYouTubeId } from "@/app/lib/utils/url-extractors"
 import { detectPlatform } from "@/app/lib/utils/platform-detection"
 import { formatDuration } from "@/app/lib/utils/format-utils"
 import { fetchYouTubeVideoPreview, submitStream } from "@/app/lib/utils/api-utils"
@@ -24,7 +24,7 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
   const [musicUrl, setMusicUrl] = useState("")
   const [musicPreview, setMusicPreview] = useState<MusicPreview | null>(null)
   const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null)
-  const [detectedPlatform, setDetectedPlatform] = useState<"youtube" | "spotify" | null>(null)
+  const [detectedPlatform, setDetectedPlatform] = useState<"youtube" | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,9 +34,9 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
   useEffect(() => {
     if (musicUrl) {
       const platform = detectPlatform(musicUrl)
-      setDetectedPlatform(platform)
-
+      
       if (platform === "youtube") {
+        setDetectedPlatform("youtube")
         const videoId = extractYouTubeId(musicUrl)
         if (videoId) {
           setIsValidUrl(true)
@@ -68,26 +68,9 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
           setIsValidUrl(false)
           setMusicPreview(null)
         }
-      } 
-      
-      else if (platform === "spotify") {
-        const trackId = extractSpotifyId(musicUrl)
-        if (trackId) {
-          setIsValidUrl(true)
-          setMusicPreview({
-            platform: "spotify",
-            spotifyId: trackId,
-            title: "Spotify Track Preview",
-            artist: "Track details will be available after submission",
-            duration: "Unknown",
-            albumArt: "/placeholder.svg?height=300&width=300",
-          })
-        } else {
-          setIsValidUrl(false)
-          setMusicPreview(null)
-        }
       } else {
         setIsValidUrl(false)
+        setDetectedPlatform(null)
         setMusicPreview(null)
       }
     }
@@ -167,26 +150,22 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
           <TabsContent value="url" className="space-y-4">
             <div className="space-y-2">
               <Input
-                placeholder="Paste YouTube or Spotify URL here..."
+                placeholder="Paste YouTube URL here..."
                 value={musicUrl}
                 onChange={(e) => setMusicUrl(e.target.value)}
                 className={`border-gray-300 focus:border-black ${isValidUrl === false ? "border-red-300 focus:border-red-500" : ""}`}
               />
               {detectedPlatform && (
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  {detectedPlatform === "youtube" ? (
-                    <FaYoutube className="w-4 h-4 text-red-500" />
-                  ) : (
-                    <FaSpotify className="w-4 h-4 text-green-500" />
-                  )}
-                  <span>{detectedPlatform === "youtube" ? "YouTube" : "Spotify"} URL detected</span>
+                  <FaYoutube className="w-4 h-4 text-red-500" />
+                  <span>YouTube URL detected</span>
                 </div>
               )}
               {isValidUrl === false && (
                 <Alert className="border-red-200 bg-red-50">
                   <FaTimes className="h-4 w-4 text-red-500" />
                   <AlertDescription className="text-red-700">
-                    Please enter a valid YouTube or Spotify URL
+                    Please enter a valid YouTube URL
                   </AlertDescription>
                 </Alert>
               )}
@@ -194,7 +173,7 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
                 <Alert className="border-green-200 bg-green-50">
                   <FaCheck className="h-4 w-4 text-green-500" />
                   <AlertDescription className="text-green-700">
-                    Valid {detectedPlatform === "youtube" ? "YouTube" : "Spotify"} URL detected
+                    Valid YouTube URL detected
                   </AlertDescription>
                 </Alert>
               )}
@@ -212,20 +191,12 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
               <div className="space-y-3">
                 <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
                   <h4 className="font-medium text-black mb-2 flex items-center space-x-2">
-                    {musicPreview.platform === "youtube" ? (
-                      <FaYoutube className="w-4 h-4 text-red-500" />
-                    ) : (
-                      <FaSpotify className="w-4 h-4 text-green-500" />
-                    )}
+                    <FaYoutube className="w-4 h-4 text-red-500" />
                     <span>Preview</span>
                   </h4>
                   <div className="flex items-center space-x-3">
                     <img
-                      src={
-                        musicPreview.platform === "youtube"
-                          ? musicPreview.thumbnail
-                          : musicPreview.albumArt || "/placeholder.svg"
-                      }
+                      src={musicPreview.thumbnail}
                       alt={musicPreview.title}
                       className="w-16 h-12 rounded object-cover"
                     />
@@ -235,19 +206,6 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
                       <p className="text-xs text-gray-500">{musicPreview.duration}</p>
                     </div>
                   </div>
-                  {musicPreview.platform === "spotify" && musicPreview.spotifyId && (
-                    <div className="mt-3">
-                      <iframe
-                        src={`https://open.spotify.com/embed/track/${musicPreview.spotifyId}?utm_source=generator&theme=0`}
-                        width="100%"
-                        height="80"
-                        frameBorder="0"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        className="rounded"
-                      ></iframe>
-                    </div>
-                  )}
                 </div>
                 <Button
                   onClick={handleSubmitMusic}

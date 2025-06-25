@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { FaArrowUp, FaArrowDown, FaSpotify, FaYoutube } from "react-icons/fa"
+import { FaArrowUp, FaArrowDown, FaYoutube } from "react-icons/fa"
 import { Song } from "@/app/lib/types/jam-types"
 import { formatDurationFromString } from "@/app/lib/utils/format-utils"
 
@@ -17,7 +17,7 @@ export function QueueItem({ song, index, onVote }: QueueItemProps) {
       <div className="flex items-center space-x-3">
         <span className="text-sm text-gray-400 w-6 text-center">{index + 1}</span>
         <img
-          src={song.platform === "youtube" ? song.thumbnail : song.albumArt || "/placeholder.svg"}
+          src={song.thumbnail}
           alt={song.title}
           className="md:w-12 md:h-12 w-10 h-8 rounded-sm object-cover"
         />
@@ -28,11 +28,7 @@ export function QueueItem({ song, index, onVote }: QueueItemProps) {
         <p className="text-[0.55rem] md:text-sm text-gray-600">{song.artist}</p>
         <div className="flex items-center space-x-3 mt-1">
           <div className="flex items-center space-x-1">
-            {song.platform === "spotify" ? (
-              <FaSpotify className="w-3 h-3 text-green-500" />
-            ) : (
-              <FaYoutube className="w-3 h-3 text-red-500" />
-            )}
+            <FaYoutube className="w-3 h-3 text-red-500" />
             <span className="text-xs text-gray-500">
               {formatDurationFromString(song.duration)}
             </span>

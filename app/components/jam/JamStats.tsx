@@ -30,10 +30,6 @@ export function JamStats({ stats }: JamStats) {
           <span className="text-sm text-gray-600">YouTube Videos</span>
           <span className="font-semibold text-black">{stats.youtubeVideos}</span>
         </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">Spotify Tracks</span>
-          <span className="font-semibold text-black">{stats.spotifyTracks}</span>
-        </div>
       </CardContent>
     </Card>
   )

@@ -3,10 +3,9 @@ export interface Song {
   title: string
   artist: string
   duration: string
-  platform: "youtube" | "spotify"
+  platform: "youtube"
   videoId?: string
   thumbnail?: string
-  spotifyId?: string
   albumArt?: string
   votes: number
   userVoted: "up" | "down" | null
@@ -28,9 +27,8 @@ export interface CurrentVideo {
 
 export interface MusicPreview {
   jamId?: string
-  platform: "youtube" | "spotify"
+  platform: "youtube"
   videoId?: string
-  spotifyId?: string
   title: string
   artist: string
   duration: string
@@ -43,5 +41,4 @@ export interface JamStats {
   totalVotes: number
   songsInQueue: number
   youtubeVideos: number
-  spotifyTracks: number
 }
