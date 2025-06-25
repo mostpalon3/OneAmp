@@ -6,7 +6,7 @@ import Link from "next/link"
 import { BiMusic } from "react-icons/bi"
 import { usePathname, useRouter } from "next/navigation";
 import { FaShare, FaUsers } from "react-icons/fa";
-import { handleShare } from "./jam/HandleShare";
+import { handleShare } from "./jam/JamShare";
 import JamPage from "./JamPage";
 
 

@@ -18,8 +18,10 @@ import { BiMusic, BiTrendingUp, BiDevices } from "react-icons/bi"
 import { HiOutlineSparkles } from "react-icons/hi"
 import { Footer } from "./components/Footer";
 import { Redirect } from "./components/Redirect";
+import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
+  const router = useRouter();
   return (
         <div className="flex flex-col min-h-screen bg-white">
             <AppBar />
@@ -46,17 +48,17 @@ export default function LandingPage() {
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-12">
-                      <Button size="lg" className="bg-black text-white hover:bg-gray-800 px-8 py-3 text-lg">
-                        Start Streaming
+                      <Button size="lg" className="bg-black text-white hover:bg-gray-800 px-8 py-3 text-lg" onClick={() => router.push("/auth")}>
+                        Get Started
                         <FaArrowRight className="ml-2 w-4 h-4" />
                       </Button>
                       <Button
                         size="lg"
                         variant="outline"
-                        className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-3 text-lg"
+                        className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-3 text-lg"                        
                       >
                         <FaPlay className="mr-2 w-4 h-4" />
-                        Watch Demo
+                        Start Streaming
                       </Button>
                     </div>
 
