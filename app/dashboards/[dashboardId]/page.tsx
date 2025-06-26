@@ -40,18 +40,29 @@ import { useRouter } from "next/navigation"
 import { Redirect } from "@/app/components/Redirect"
 
 // Mock user data
-const currentUser = {
-  id: 1,
-  name: "Luffy",
-  username: "@LuffyTheKingofThePirates",
-  bio: "Sun god nika, the king of the pirates! Join me on my adventures to find the One Piece and become the Pirate King!",
-  avatar: "/images/luffy.jpeg?height=120&width=120",
-  followers: 1247,
-  following: 892,
-  totalJams: 45,
-  totalLikes: 3420,
-  isFollowing: false,
+type Profile = {
+  id: any
+  name: any
+  username: any,
+  bio: string ,
+  avatar: any,
+  followers: number,
+  following: number,
+  totalJams: number,
+  totalLikes: number,
+  isFollowing: boolean,
 }
+  type Jam = {
+    id: number
+    name: string
+    createdAt: string
+    status: string
+    viewers: number
+    duration: string
+    genre: string
+    totalSongs: number
+    totalVotes: number
+  }
 
 // Genre options for the select
 const genres = [
@@ -84,19 +95,19 @@ export default function Dashboard() {
   const [isJoining, setIsJoining] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false)
-  type Jam = {
-    id: number
-    name: string
-    createdAt: string
-    status: string
-    viewers: number
-    duration: string
-    genre: string
-    totalSongs: number
-    totalVotes: number
-  }
   const [jams, setJams] = useState<Jam[]>([])
-  const [user, setUser] = useState(currentUser)
+  const [user, setUser] = useState<Profile>({
+    id: "",
+    name: "",
+    username: "",
+    bio: "",
+    avatar: "",
+    followers: 0,
+    following: 0,
+    totalJams: 0,
+    totalLikes: 0,
+    isFollowing: false,
+  })
   const router = useRouter();
 
   async function fetchUserProfile() {
@@ -436,7 +447,7 @@ useEffect(() => {
                     <AvatarFallback className="bg-gray-100 text-gray-600 text-2xl">
                       {user.name
                         .split(" ")
-                        .map((n) => n[0])
+                        .map((n: any[]) => n[0])
                         .join("")}
                     </AvatarFallback>
                   </Avatar>

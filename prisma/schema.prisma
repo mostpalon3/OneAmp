@@ -24,20 +24,24 @@ model User {
   upvotes   Upvote[]
   downvotes Downvote[]
   Jam       Jam[]
-  likes     Likes[]
+  jamLikes  JamLike[]
   profile   Profile?
   createdAt DateTime   @default(now())
 
+  // Follow relationships
+  following Follow[] @relation("UserFollowing")
+  followers Follow[] @relation("UserFollowers")
 
   // Performance indexes
   @@index([email], name: "users_email_idx")
   @@index([provider], name: "users_provider_idx")
 }
+
 model Profile {
   id               String   @id @default(uuid())
   userId           String   @unique
-  followers        Int      @default(0)
-  followed         Boolean  @default(false)
+  followersCount   Int      @default(0)
+  followingCount   Int      @default(0)
   bio              String   @default("")
   image            String   @default("")
   username         String?  @unique
@@ -52,21 +56,57 @@ model Profile {
   @@index([username], name: "profile_username_idx")
 }
 
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower    User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  // Performance indexes for follow relationships
+  @@index([followerId], name: "follows_followerId_idx")
+  @@index([followingId], name: "follows_followingId_idx")
+  @@index([followerId, followingId], name: "follows_relationship_idx")
+}
+
 model Jam {
-  id        String   @id @default(uuid())
-  title     String   @default("")
-  createdAt DateTime @default(now())
+  id        String     @id @default(uuid())
+  title     String     @default("")
+  createdAt DateTime   @default(now())
   userId    String
-  likes     Likes[]  
-  genre    String    @default("Any Genre")
+  genre     String     @default("Any Genre")
+  likesCount Int       @default(0)
 
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   streams   Stream[]
+  jamLikes  JamLike[]
   createdBy String
 
   // Performance indexes for common queries
   @@index([userId], name: "jams_userId_idx")
   @@index([createdAt], name: "jams_createdAt_idx")
+  @@index([likesCount], name: "jams_likesCount_idx")
+  @@index([genre], name: "jams_genre_idx")
+}
+
+model JamLike {
+  id        String   @id @default(uuid())
+  userId    String
+  jamId     String
+  createdAt DateTime @default(now())
+  
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jam       Jam  @relation(fields: [jamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jamId])
+  // Performance indexes for jam likes
+  @@index([userId], name: "jamLikes_userId_idx")
+  @@index([jamId], name: "jamLikes_jamId_idx")
+  @@index([userId, jamId], name: "jamLikes_userId_jamId_idx")
+  @@index([createdAt], name: "jamLikes_createdAt_idx")
 }
 
 model Stream {
@@ -87,7 +127,7 @@ model Stream {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   currentStream CurrentStream?
   submittedBy   String         @default("anonymous")
-  Jam           Jam           @relation(fields: [jamId], references: [id])
+  jam           Jam            @relation(fields: [jamId], references: [id])
   jamId         String
 
   // Performance indexes for your most common queries
@@ -96,28 +136,17 @@ model Stream {
   @@index([userId, played, createdAt], name: "streams_userId_played_createdAt_idx")
   @@index([type], name: "streams_type_idx")
   @@index([extractedId], name: "streams_extractedId_idx")
+  @@index([jamId], name: "streams_jamId_idx")
 }
 
 model CurrentStream {
-  jamId   String @id
-  streamId String? @unique
-  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  jamId     String  @id
+  streamId  String? @unique
+  stream    Stream? @relation(fields: [streamId], references: [id], onDelete: Cascade)
 
   // Performance index for current stream lookups
-  @@index([jamId], name: "currentStream_userId_idx")
+  @@index([jamId], name: "currentStream_jamId_idx")
   @@index([streamId], name: "currentStream_streamId_idx")
-}
-
-model Likes {
-  id       String @id @default(uuid())
-  userId   String
-  jamId    String
-  jam      Jam    @relation(fields: [jamId], references: [id], onDelete: Cascade)
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, jamId])
-  // Performance index for likes by user and jam
-  @@index([userId, jamId], name: "likes_userId_jamId_idx")
 }
 
 model Upvote {
