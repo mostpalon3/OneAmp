@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FaHeart } from "react-icons/fa"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 
 interface likeStats {
     jamId: string;
@@ -17,7 +16,6 @@ export function JamLikes({ jamId }: likeStats) {
 
     const handleLikeToggle = async () => {
         if (isLoading) return; // Prevent double clicks
-        const session = useSession();
         
         setIsLoading(true);
         
@@ -33,9 +31,6 @@ export function JamLikes({ jamId }: likeStats) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    userId: session.data?.user?.id, 
-                }),
             });
 
             if (!response.ok) {
