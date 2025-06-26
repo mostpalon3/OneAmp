@@ -150,11 +150,20 @@ export async function GET(request: NextRequest) {
           }
         }
       })
+        const totalUserLikes = await prismaClient.jam.aggregate({
+    where: {
+      userId: session?.user?.id , 
+    },
+    _count: {
+      likesCount: true, 
+    },
+  });
 
       if (completedProfile) {
         return NextResponse.json({
           profile: completedProfile,
           user: completedProfile.user,
+          totalUserLikes: totalUserLikes._count.likesCount || 0,
         })
       } else {
         return NextResponse.json(

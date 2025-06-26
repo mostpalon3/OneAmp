@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/app/lib/auth"
 
-const devUserId = "1e0ca34f-f3fe-482f-8d9a-0f3062d06f13";
+const devUserId = "4e507200-c0e2-4346-8315-664a71c7ee57";
 
 const createJamSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -73,6 +73,7 @@ const jams = await prismaClient.jam.findMany({
         }
       },
     },
+    likesCount: true,
     createdBy: true,
     createdAt: true,
   },
@@ -80,6 +81,8 @@ const jams = await prismaClient.jam.findMany({
     createdAt: "desc",
   },
 });
+
+
 
     if (!jams || jams.length === 0) {
       return NextResponse.json(
@@ -94,7 +97,7 @@ const jams = await prismaClient.jam.findMany({
     return NextResponse.json(
       {
         message: "Jams fetched successfully",
-        jams,
+        jams 
       },
       { status: 200 }
     );

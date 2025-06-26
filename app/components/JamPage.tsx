@@ -13,6 +13,7 @@ import { REFRESH_INTERVAL_MS } from "@/app/lib/constants/stream-constants"
 import { AddMusicForm } from "./jam/AddMusicForm"
 import { QRCodeShare } from "./jam/HandleShare"
 import { Toaster } from "react-hot-toast"
+import { JamLikes } from "./jam/JamLikes"
 
 export default function JamPage({
   jamId,
@@ -264,6 +265,7 @@ export default function JamPage({
                 )}
 
                 <JamStats stats={streamStats} />
+                <JamLikes jamId={jamId} />
                 
                 {/* Replace QuickActions with QRCodeShare */}
                 <div className="bg-white rounded-lg p-4 shadow-sm border">

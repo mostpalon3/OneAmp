@@ -127,7 +127,7 @@ model Stream {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   currentStream CurrentStream?
   submittedBy   String         @default("anonymous")
-  jam           Jam            @relation(fields: [jamId], references: [id])
+  jam           Jam            @relation(fields: [jamId], references: [id],onDelete: Cascade)
   jamId         String
 
   // Performance indexes for your most common queries

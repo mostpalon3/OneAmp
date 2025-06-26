@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prismaClient from '@/app/lib/db';
 
+const devId = "16a7dae2-d8fb-4743-8ba5-78555959eefd"
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ jamId: string }> }
 ) {
   try {
     const session = await getServerSession();
-    if (!session?.user?.email) {
+    const isDev = process.env.NODE_ENV === 'development';
+    if (!session?.user?.email && !isDev) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const user = await prismaClient.user.findUnique({
-      where: { email: session.user.email }
+      where: { id: session?.user?.id || devId }
     });
 
     if (!user) {
@@ -42,11 +45,35 @@ export async function POST(
     });
 
     if (existingLike) {
-      return NextResponse.json({ error: 'Already liked' }, { status: 400 });
+      // If already liked, delete the like (toggle off)
+      const [_, updatedJam] = await prismaClient.$transaction([
+        prismaClient.jamLike.delete({
+          where: {
+            userId_jamId: {
+              userId: user.id,
+              jamId: jamId
+            }
+          }
+        }),
+        prismaClient.jam.update({
+          where: { id: jamId },
+          data: {
+            likesCount: {
+              decrement: 1
+            }
+          }
+        })
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        likesCount: updatedJam.likesCount,
+        liked: false
+      });
     }
 
     // Create like and update likes count
-    const [jamLike, updatedJam] = await prismaClient.$transaction([
+    const [_, updatedJam] = await prismaClient.$transaction([
       prismaClient.jamLike.create({
         data: {
           userId: user.id,
@@ -75,68 +102,50 @@ export async function POST(
   }
 }
 
-export async function DELETE(
+export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ jamId: string }> }
 ) {
   try {
     const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const isDev = process.env.NODE_ENV === 'development';
+    if (!session?.user?.email && !isDev) {
+      return NextResponse.json({ liked: false });
     }
 
-    const user = await prismaClient.user.findUnique({
-      where: { email: session.user.email }
+    const currentUser = await prismaClient.user.findUnique({
+      where: { id: session?.user?.id || devId }
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!currentUser) {
+      return NextResponse.json({ liked: false });
     }
 
     const { jamId } = await params;
 
-    // Check if like exists
-    const existingLike = await prismaClient.jamLike.findUnique({
+    const jamLike = await prismaClient.jamLike.findUnique({
       where: {
         userId_jamId: {
-          userId: user.id,
+          userId: currentUser.id,
           jamId: jamId
         }
       }
     });
 
-    if (!existingLike) {
-      return NextResponse.json({ error: 'Not liked yet' }, { status: 400 });
-    }
+    const jam = await prismaClient.jam.findUnique({
+      where: { id: jamId },
+      select: { likesCount: true }
+    });
 
-    // Remove like and update likes count
-    const [_, updatedJam] = await prismaClient.$transaction([
-      prismaClient.jamLike.delete({
-        where: {
-          userId_jamId: {
-            userId: user.id,
-            jamId: jamId
-          }
-        }
-      }),
-      prismaClient.jam.update({
-        where: { id: jamId },
-        data: {
-          likesCount: {
-            decrement: 1
-          }
-        }
-      })
-    ]);
 
     return NextResponse.json({
-      success: true,
-      likesCount: updatedJam.likesCount,
-      liked: false
+      liked: !!jamLike,
+      likesCount: jam?.likesCount || 0,
+    //   totalUserLikes: totalUserLikes,
     });
 
   } catch (error) {
-    console.error('Error unliking jam:', error);
+    console.error('Error checking like status:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

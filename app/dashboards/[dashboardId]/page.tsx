@@ -61,7 +61,7 @@ type Profile = {
     duration: string
     genre: string
     totalSongs: number
-    totalVotes: number
+    totalLikes: number
   }
 
 // Genre options for the select
@@ -129,7 +129,7 @@ export default function Dashboard() {
         followers: 1247,
         following: 892,
         totalJams: jams.length,
-        totalLikes: 3420,
+        totalLikes: data.totalUserLikes,
         isFollowing: false,
       }
       setUser(userDetails)
@@ -199,10 +199,9 @@ async function fetchAllJams() {
       duration: "1h 30m",
       genre: jam.genre,
       totalSongs: jam._count.streams , // Use _count.songs if available
-      totalVotes: jam.likes,
+      totalLikes: jam.likesCount,
       }
     })
-    console.log("New jams:", jams.jams)
     setJams(newJam)
     setIsCreating(false)
     setJamName("")
@@ -493,12 +492,12 @@ useEffect(() => {
                         <span className="text-gray-600">following</span>
                       </div>
                       <div className="flex items-center space-x-1">
-                        <span className="font-semibold text-black">{user.totalJams}</span>
+                        <span className="font-semibold text-black">{jams.length}</span>
                         <span className="text-gray-600">jams</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <FaHeart className="w-4 h-4 text-gray-600" />
-                        <span className="font-semibold text-black">{user.totalLikes.toLocaleString()}</span>
+                        <span className="font-semibold text-black">{user.totalLikes}</span>
                         <span className="text-gray-600">likes</span>
                       </div>
                     </div>
@@ -615,8 +614,8 @@ useEffect(() => {
                           </div>
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <FaHeart className="w-4 h-4" />
-                            <span className="font-medium">{jam.totalVotes}</span>
-                            <span>votes</span>
+                            <span className="font-medium">{jam.totalLikes}</span>
+                            <span>likes</span>
                           </div>
                         </div>
 
