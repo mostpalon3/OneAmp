@@ -56,26 +56,30 @@ export async function GET(request: Request) {
       return NextResponse.json("Unauthorized", { status: 401 });
     }
 
-    const jams = await prismaClient.jam.findMany({
-      where: {
-        userId: session?.user?.id ?? devUserId, // Fallback for dev mode
-      },
+const jams = await prismaClient.jam.findMany({
+  where: {
+    userId: session?.user?.id ?? devUserId, // Fallback for dev mode
+  },
+  select: {
+    id: true,
+    title: true,
+    genre: true,
+    _count: {
       select: {
-        id: true,
-        title: true,
-        genre: true,
-        _count: {
-          select: {
-            likes: true,
-        },  
+        streams:{
+          where:{
+            played:false
+          }
+        }
       },
-        createdBy: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    },
+    createdBy: true,
+    createdAt: true,
+  },
+  orderBy: {
+    createdAt: "desc",
+  },
+});
 
     if (!jams || jams.length === 0) {
       return NextResponse.json(

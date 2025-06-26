@@ -173,6 +173,8 @@ async function fetchAllJams() {
       throw new Error("Failed to fetch jams")
     }
     const jams = await response.json()
+    console.log("Fetched jams:", jams)
+    // console.log("Fetched jams:", jams._count.streams)
     const newJam = jams.jams.map((jam: any) => {
       const date = new Date(jam.createdAt)
       const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' }
@@ -185,13 +187,12 @@ async function fetchAllJams() {
       viewers: 156,
       duration: "1h 30m",
       genre: jam.genre,
-      totalSongs: 12,
+      totalSongs: jam._count.streams , // Use _count.songs if available
       totalVotes: jam.likes,
       }
     })
-    console.log("Fetched jams:", newJam)
+    console.log("New jams:", jams.jams)
     setJams(newJam)
-    console.log("Jams state updated:", jams)
     setIsCreating(false)
     setJamName("")
     setJamGenre("")
@@ -613,12 +614,6 @@ useEffect(() => {
                             <FaCalendarAlt className="w-3 h-3" />
                             <span>Created {jam.createdAt}</span>
                           </div>
-                          {jam.status === "live" && (
-                            <div className="flex items-center space-x-1 text-sm text-green-600">
-                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                              <span className="font-medium">Broadcasting</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </CardContent>
