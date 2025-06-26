@@ -4,7 +4,7 @@ import prismaClient from '@/app/lib/db';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { jamId: string } }
+  { params }: { params: Promise<{ jamId: string }> }
 ) {
   try {
     const session = await getServerSession();
@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const { jamId } = params;
+    const { jamId } = await params;
 
     // Check if jam exists
     const jam = await prismaClient.jam.findUnique({
@@ -77,7 +77,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { jamId: string } }
+  { params }: { params: Promise<{ jamId: string }> }
 ) {
   try {
     const session = await getServerSession();
@@ -93,7 +93,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const { jamId } = params;
+    const { jamId } = await params;
 
     // Check if like exists
     const existingLike = await prismaClient.jamLike.findUnique({

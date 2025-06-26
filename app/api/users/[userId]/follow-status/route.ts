@@ -1,10 +1,10 @@
 import prismaClient from "@/app/lib/db";
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-  request: NextResponse,
-  { params }: { params: { userId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await getServerSession();
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ following: false });
     }
 
-    const { userId: targetUserId } = params;
+    const { userId: targetUserId } = await params;
 
     const followRelation = await prismaClient.follow.findUnique({
       where: {

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await getServerSession();
@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const { userId: followingId } = params;
+    const { userId: followingId } = await params;
 
     // Can't follow yourself
     if (follower.id === followingId) {
@@ -95,7 +95,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await getServerSession();
@@ -111,7 +111,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const { userId: followingId } = params;
+    const { userId: followingId } = await params;
 
     // Check if follow relationship exists
     const existingFollow = await prismaClient.follow.findUnique({

@@ -18,14 +18,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OneAmp",
   description: "A collaborative music creation platform",
-  viewport: {
-    width: "device-width",
-    initialScale: 1.0,
-  },
   icons: {
     icon: "/music-icon.svg",
     shortcut: "/music-icon.svg",
   },
+  viewport: "width=device-width, initial-scale=1.0",
 };
 
 export default function RootLayout({

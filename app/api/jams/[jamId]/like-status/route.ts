@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jamId: string } }
+  { params }: { params: Promise<{ jamId: string }> }
 ) {
   try {
     const session = await getServerSession();
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ liked: false });
     }
 
-    const { jamId } = params;
+    const { jamId } = await params;
 
     const jamLike = await prismaClient.jamLike.findUnique({
       where: {
