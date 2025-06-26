@@ -20,7 +20,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 id: true,
                 title: true,
                 genre: true,
-                likes: true,
                 createdBy: true,
                 createdAt: true,
             },
