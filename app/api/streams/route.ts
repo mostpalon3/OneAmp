@@ -180,13 +180,13 @@ export async function POST(req: NextRequest) {
     const stream = await prismaClient.stream.create({
       data: {
         title: res.title,
-        userId: session?.user?.id ?? "dev-user",
+        userId: session?.user?.id ?? "dev-user", // fallback for dev mode
         jamId: data.jamId,
         url: data.url,
         extractedId,
         type: "YouTube",
         smallImg: (thumbnails.length > 1 ? thumbnails[thumbnails.length - 2].url : thumbnails[thumbnails.length - 1].url) ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1dcc99fa72.jpg",
-        bigImg: thumbnails[thumbnails.length - 1].url ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1dcc99fa72.jpg",
+        bigImg: thumbnails[thumbnails.length - 1].url ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1d1cc99fa72.jpg",
         duration: parseDuration(res.duration),
         artist: res.channelTitle,
         played: false,
@@ -194,30 +194,19 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const queueCount = await prismaClient.stream.count({
-      where: {
-        jamId: data.jamId,
-        played: false
-      }
-    });
-
-    const isFirstSong = queueCount === 1;
-
     return NextResponse.json({
       message: "Stream added successfully",
-      isFirstSong,
       ...stream,
     }, {
       status: 201
     });
-
   } catch (error) {
     return NextResponse.json({
       message: "Error while adding a stream",
       error: error instanceof Error ? error.message : "Unknown error occurred"
     }, {
-      status: 500
-    });
+      status: 411
+    })
   }
 }
 
