@@ -214,10 +214,16 @@ export default function JamPage({
     }
   }, [shouldAutoPlay, handlePlayNext]);
 
-  // Update the onSongAdded callback to include auto-play logic
+  // Update the handleSongAdded callback to force auto-play check
   const handleSongAdded = useCallback(async () => {
+    const wasEmpty = queue.length === 0;
     await fetchInitialStreams();
-  }, []);
+    
+    // Force auto-play if queue was empty and now has songs
+    if (wasEmpty && queue.length > 0) {
+      setShouldAutoPlay(true);
+    }
+  }, [queue.length]);
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
