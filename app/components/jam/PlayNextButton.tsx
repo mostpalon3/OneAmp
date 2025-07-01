@@ -36,6 +36,7 @@ export function PlayNextButton({ onPlayNext, isLoading,queueEmpty }: PlayNextBut
             </>
           )}
         </Button>
+        <span className="text-xs text-gray-500">Note: For the first song added, manually press Play Next.</span>
       </CardContent>
     </Card>
   )

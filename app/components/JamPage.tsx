@@ -36,8 +36,7 @@ export default function JamPage({
   })
   const [isLoading, setIsLoading] = useState(false)
   const [currentPlayTime, setCurrentPlayTime] = useState(0)
-  const [wasEmpty, setWasEmpty] = useState(true);
-  const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
+
 
   const fetchInitialStreams = async () => {
     const streams = await refreshStreams(jamId);
@@ -84,16 +83,7 @@ export default function JamPage({
         thumbnail: "/placeholder.svg",
         votes: 0,
       };
-      const isCurrentlyEmpty = !streams.activeStream;
-      const hasQueuedSongs = sortedStreams.length > 0;
-    
-      
-      // Check if we should auto-play (was empty, now has songs, but no active stream)
-      if (wasEmpty && hasQueuedSongs && isCurrentlyEmpty) {
-        setShouldAutoPlay(true);
-      }
-      
-      setWasEmpty(isCurrentlyEmpty);
+
       setQueue(sortedStreams);
       setCurrentVideo(currentTransformedStream);
     }
@@ -206,25 +196,6 @@ export default function JamPage({
     youtubeVideos: queue.filter((song) => song.platform === "youtube").length,
   };
 
-  // Handle auto-play when shouldAutoPlay changes
-  useEffect(() => {
-    if (shouldAutoPlay) {
-      setShouldAutoPlay(false);
-      handlePlayNext();
-    }
-  }, [shouldAutoPlay, handlePlayNext]);
-
-  // Update the handleSongAdded callback to force auto-play check
-  const handleSongAdded = useCallback(async () => {
-    const wasEmpty = queue.length === 0;
-    await fetchInitialStreams();
-    
-    // Force auto-play if queue was empty and now has songs
-    if (wasEmpty && queue.length > 0) {
-      setShouldAutoPlay(true);
-    }
-  }, [queue.length]);
-
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
       <AppBar jamId={jamId} />
@@ -245,7 +216,7 @@ export default function JamPage({
                 <div className="order-1 lg:hidden">
                   <AddMusicForm 
                     jamId={jamId}
-                    onSongAdded={handleSongAdded}
+                    onSongAdded={fetchInitialStreams}
                   />
                 </div>
                 <QueueList queue={queue} onVote={handleVote} />
@@ -258,7 +229,7 @@ export default function JamPage({
                 <div className="hidden lg:block">
                   <AddMusicForm 
                     jamId={jamId}
-                    onSongAdded={handleSongAdded}
+                    onSongAdded={fetchInitialStreams}
                   />
                 </div>
                 
