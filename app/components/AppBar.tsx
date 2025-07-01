@@ -112,7 +112,7 @@ const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean
         <Logo />
         
         {isHomePage && <HomeNavigation />}
-        {isJamPage && jamId && <JamPageStatus jamId={jamId} />}
+        {/* {isJamPage && jamId && <JamPageStatus jamId={jamId} />} */}
         
         <AuthButtons isAuthenticated={isAuthenticated} isHomePage={isHomePage} />
       </div>
