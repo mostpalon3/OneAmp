@@ -16,9 +16,15 @@ import { useParams } from "next/navigation"
 
 interface AddMusicFormProps {
   jamId: string
-  onSongAdded: () => void
-  // onEmptyQueue: () => void
+  onSongAdded: () => Promise<void> | void // Support both sync and async
 }
+
+// Error handling utility
+const handleError = (error: unknown, context: string): string => {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+  console.error(`${context}:`, errorMessage);
+  return errorMessage;
+};
 
 export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
   const [musicUrl, setMusicUrl] = useState("")
@@ -30,21 +36,33 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
   const [error, setError] = useState<string | null>(null)
   const params = useParams();
 
-
   useEffect(() => {
-    if (musicUrl) {
+    let isMounted = true;
+    
+    const validateAndFetchPreview = async () => {
+      if (!musicUrl) {
+        setIsValidUrl(null)
+        setDetectedPlatform(null)
+        setMusicPreview(null)
+        setError(null)
+        return;
+      }
+
       const platform = detectPlatform(musicUrl)
       
       if (platform === "youtube") {
         setDetectedPlatform("youtube")
         const videoId = extractYouTubeId(musicUrl)
+        
         if (videoId) {
           setIsValidUrl(true)
           setIsLoading(true)
           setError(null)
           
-          fetchYouTubeVideoPreview(musicUrl)
-            .then((videoData) => {
+          try {
+            const videoData = await fetchYouTubeVideoPreview(musicUrl);
+            
+            if (isMounted) {
               setMusicPreview({
                 jamId,
                 platform: "youtube",
@@ -56,14 +74,16 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
                 url: musicUrl,
               })
               setIsLoading(false)
-            })
-            .catch((error) => {
-              console.error('Error fetching YouTube video details:', error)
+            }
+          } catch (error) {
+            if (isMounted) {
+              const errorMessage = handleError(error, 'Failed to fetch YouTube video details');
               setIsValidUrl(false)
               setMusicPreview(null)
               setIsLoading(false)
               setError('Failed to fetch video details. Please check the URL and try again.')
-            })
+            }
+          }
         } else {
           setIsValidUrl(false)
           setMusicPreview(null)
@@ -73,15 +93,43 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
         setDetectedPlatform(null)
         setMusicPreview(null)
       }
-    }
-    
-    else {
-      setIsValidUrl(null)
-      setDetectedPlatform(null)
-      setMusicPreview(null)
-      setError(null)
-    }
+    };
+
+    validateAndFetchPreview();
+
+    return () => {
+      isMounted = false;
+    };
   }, [musicUrl, jamId])
+
+  const resetForm = () => {
+    setMusicUrl("")
+    setMusicPreview(null)
+    setIsValidUrl(null)
+    setDetectedPlatform(null)
+    setError(null)
+  };
+
+  const handleAutoUpvote = async (streamId: string): Promise<void> => {
+    try {
+      const response = await fetch(`/api/streams/upvote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          streamId: streamId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Auto-upvote failed: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      // Log but don't throw - auto-upvote is not critical
+      handleError(error, 'Auto-upvote failed');
+    }
+  };
 
   const handleSubmitMusic = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,41 +139,38 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
 
     try {
       console.log("📤 Submitting music...");
-      const responseData = await submitStream(jamId,musicUrl);
-      const streamId = responseData.id;
+      
+      // Submit the stream
+      const responseData = await submitStream(jamId, musicUrl);
+      const streamId = responseData?.id;
 
       if (!streamId) {
         throw new Error('No stream ID returned from API');
       }
 
+      // Wait for auto-upvote to complete BEFORE refreshing the UI
       try {
-        await fetch(`/api/streams/upvote`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            streamId: streamId
-          }),
-        });
-      } catch (voteError) {
-        console.error('Auto-upvote failed:', voteError);
+        await handleAutoUpvote(streamId);
+        console.log("✅ Auto-upvote completed");
+      } catch (upvoteError) {
+        // Log but don't fail the entire submission
+        handleError(upvoteError, 'Auto-upvote failed');
       }
 
-      setMusicUrl("")
-      setMusicPreview(null)
-      setIsValidUrl(null)
-      setDetectedPlatform(null)
-      setError(null)
+      // Reset form state
+      resetForm();
       
-      // Wait a moment before refreshing to ensure database is updated
-      setTimeout(() => {
-        onSongAdded()
-      }, 500);
+      // Refresh the song list AFTER upvote is done
+      try {
+        await Promise.resolve(onSongAdded());
+      } catch (refreshError) {
+        // Log but don't prevent success state
+        handleError(refreshError, 'Failed to refresh song list after submission');
+      }
       
     } catch (error) {
-      console.error('Error submitting music:', error)
-      setError('Failed to submit music. Please try again.')
+      const errorMessage = handleError(error, 'Failed to submit music');
+      setError(`Failed to submit music: ${errorMessage}`);
     } finally {
       setIsSubmitting(false)
     }
@@ -154,6 +199,7 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
                 value={musicUrl}
                 onChange={(e) => setMusicUrl(e.target.value)}
                 className={`border-gray-300 focus:border-black ${isValidUrl === false ? "border-red-300 focus:border-red-500" : ""}`}
+                disabled={isSubmitting}
               />
               {detectedPlatform && (
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -187,6 +233,13 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
               )}
             </div>
 
+            {isLoading && (
+              <div className="flex items-center justify-center p-4">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-black rounded-full animate-spin mr-2" />
+                <span className="text-sm text-gray-600">Loading preview...</span>
+              </div>
+            )}
+
             {musicPreview && (
               <div className="space-y-3">
                 <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
@@ -210,7 +263,7 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
                 <Button
                   onClick={handleSubmitMusic}
                   disabled={isSubmitting || isLoading}
-                  className="w-full bg-black hover:bg-gray-800"
+                  className="w-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <>

@@ -9,6 +9,13 @@ interface likeStats {
     jamId: string;
 }
 
+// Error handling utility
+const handleError = (error: unknown, context: string): string => {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+  console.error(`${context}:`, errorMessage);
+  return errorMessage;
+};
+
 export function JamLikes({ jamId }: likeStats) {
     const [liked, setLiked] = useState(false);
     const [totalLikes, setTotalLikes] = useState(0);
@@ -51,43 +58,51 @@ export function JamLikes({ jamId }: likeStats) {
             setLiked(wasLiked);
             setTotalLikes(previousCount);
             
-            if (error instanceof Error) {
-                console.error('Detailed error:', error.message);
-            }
+            handleError(error, 'Failed to toggle like');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const getLikeStatus = async () => {
-        try {
-            const response = await fetch(`/api/jams/${jamId}/like`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to fetch like status');
-            }
-
-            const data = await response.json();
-            setLiked(data.liked);
-            setTotalLikes(data.likesCount);
-            
-        } catch (error) {
-            console.error('Error fetching like status:', error);
-            if (error instanceof Error) {
-                console.error('Detailed error:', error.message);
-            }
-        }
-    };
-
     useEffect(() => {
+        let isMounted = true;
+        
+        const getLikeStatus = async () => {
+            try {
+                const response = await fetch(`/api/jams/${jamId}/like`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch like status');
+                }
+
+                const data = await response.json();
+                
+                // Only update state if component is still mounted
+                if (isMounted) {
+                    setLiked(data.liked);
+                    setTotalLikes(data.likesCount);
+                }
+                
+            } catch (error) {
+                if (isMounted) {
+                    handleError(error, 'Failed to fetch like status');
+                }
+            }
+        };
+
         getLikeStatus();
-    }, [jamId]); // Only depend on jamId, not handleLikeToggle
+        
+        // Cleanup function to prevent memory leaks
+        return () => {
+            isMounted = false;
+        };
+    }, [jamId]);
 
     return (
         <Card className="border-gray-200">

@@ -9,9 +9,16 @@ import { fetchJamHeaderDetails } from "@/app/lib/utils/api-utils"
 export function JamHeader() {
   const params = useParams();
   const jamId = String(params.jamId);
+  interface JamDetails {
+  id: string;
+  title: string;
+  genre: string;
+  createdBy: string;
+  createdAt: string;
+}
 
   // Store jam details in state
-  const [jamDetails, setJamDetails] = useState<any>(null);
+  const [jamDetails, setJamDetails] = useState<JamDetails | null>(null);
 
   useEffect(() => {
     if (jamId) {

@@ -37,6 +37,22 @@ const genres = [
   "Mixed",
 ]
 
+// Enhanced file validation function
+const validateFile = (file: File): string | null => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  
+  if (!allowedTypes.includes(file.type)) {
+    return "Please select a valid image file (JPEG, PNG, GIF, or WebP)";
+  }
+  
+  if (file.size > maxSize) {
+    return "File size must be less than 5MB";
+  }
+  
+  return null;
+};
+
 export default function CompleteProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -138,32 +154,33 @@ export default function CompleteProfilePage() {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
-      // Validate file size (e.g., max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError("File size must be less than 5MB")
-        return
-      }
+    if (!file) return
 
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError("Please select a valid image file")
-        return
-      }
-
-      setError(null)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setFormData((prev) => ({
-          ...prev,
-          profilePicture: e.target?.result as string,
-        }))
-      }
-      reader.onerror = () => {
-        setError("Failed to read file")
-      }
-      reader.readAsDataURL(file)
+    // Use the enhanced validation function
+    const validationError = validateFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
     }
+
+    // Clear any previous errors
+    setError(null);
+
+    // Process the valid file
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      setFormData((prev) => ({
+        ...prev,
+        profilePicture: e.target?.result as string,
+      }));
+    };
+    
+    reader.onerror = () => {
+      setError("Failed to read file");
+    };
+    
+    reader.readAsDataURL(file);
   }
 
   const generateUsername = () => {
@@ -275,10 +292,16 @@ export default function CompleteProfilePage() {
                   </Avatar>
                   <label className="absolute -bottom-1 -right-1 w-6 h-6 bg-black rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors">
                     <FaUpload className="w-3 h-3 text-white" />
-                    <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                    <input 
+                      type="file" 
+                      accept="image/jpeg,image/png,image/gif,image/webp" 
+                      onChange={handleFileUpload} 
+                      className="hidden" 
+                    />
                   </label>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">Click to upload profile picture</p>
+                <p className="text-xs text-gray-400 mt-1">Supports JPEG, PNG, GIF, WebP (max 5MB)</p>
               </div>
 
               {/* Name */}
@@ -378,7 +401,7 @@ export default function CompleteProfilePage() {
           >
             ← Back to sign in
           </Link>
-        </div>
+          </div>
       </div>
     </div>
   )
