@@ -3,7 +3,7 @@
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-oneamp.vercel.app-blue?style=for-the-badge&logo=vercel)](https://oneamp.vercel.app)
 
 <p align="center">
-  <img src="public/thumbnail.png" alt="OneAmp Thumbnail" width="600"/>
+  <img src="public/thumbnail.png" alt="OneAmp Thumbnail" width="full"/>
 </p>
 
 OneAmp is a collaborative music streaming platform that lets users create, join, and manage interactive music jams. Stream music from Spotify and YouTube, let your audience vote on the queue in real-time, and enjoy a seamless, multi-platform experience.
@@ -55,12 +55,12 @@ OneAmp is a collaborative music streaming platform that lets users create, join,
    ```
 
 3. **Configure environment variables:**
-   - Copy `.env.example` to `.env` and fill in your database and OAuth credentials.
+   - Create `.env` and fill in your database and OAuth credentials.
 
 4. **Set up the database:**
    ```sh
-   pnpm exec prisma migrate deploy
-   pnpm exec prisma generate
+   pnpm prisma migrate deploy
+   pnpm prisma generate
    ```
 
 5. **Run the development server:**
