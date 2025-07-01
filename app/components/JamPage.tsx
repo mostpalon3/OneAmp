@@ -84,12 +84,12 @@ export default function JamPage({
         thumbnail: "/placeholder.svg",
         votes: 0,
       };
-      
       const isCurrentlyEmpty = !streams.activeStream;
       const hasQueuedSongs = sortedStreams.length > 0;
     
+      
+      // Check if we should auto-play (was empty, now has songs, but no active stream)
       if (wasEmpty && hasQueuedSongs && isCurrentlyEmpty) {
-        console.log("🎵 Auto-starting playback for new song in empty queue");
         setShouldAutoPlay(true);
       }
       
@@ -167,13 +167,12 @@ export default function JamPage({
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to play next song');
       }
-      
-      console.log("✅ Next stream started successfully");
       setCurrentPlayTime(0); // Reset timer for new song
       
+      // Wait a moment before refreshing to ensure database is updated
       setTimeout(() => {
         fetchInitialStreams();
-      }, 1000); // Increased delay to ensure database consistency
+      }, 500);
       
     } catch (error) {
       console.error('Error playing next song:', error);
@@ -183,7 +182,7 @@ export default function JamPage({
     } finally {
       setIsLoading(false);
     }
-  }, [jamId]);
+  }, []);
 
   const handleVideoEnd = useCallback(() => {
     // Add a small delay to prevent rapid successive calls
@@ -211,22 +210,13 @@ export default function JamPage({
   useEffect(() => {
     if (shouldAutoPlay) {
       setShouldAutoPlay(false);
-      console.log("🚀 Triggering auto-play");
       handlePlayNext();
     }
   }, [shouldAutoPlay, handlePlayNext]);
 
   // Update the onSongAdded callback to include auto-play logic
   const handleSongAdded = useCallback(async () => {
-    console.log("🎵 Song added, refreshing streams...");
-    
-    // Immediate refresh
     await fetchInitialStreams();
-    
-    // Additional refresh after a short delay to catch auto-upvote
-    setTimeout(async () => {
-      await fetchInitialStreams();
-    }, 1500);
   }, []);
 
   return (

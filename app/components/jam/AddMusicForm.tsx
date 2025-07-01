@@ -148,25 +148,23 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
         throw new Error('No stream ID returned from API');
       }
 
+      // Wait for auto-upvote to complete BEFORE refreshing the UI
       try {
         await handleAutoUpvote(streamId);
+        console.log("✅ Auto-upvote completed");
       } catch (upvoteError) {
+        // Log but don't fail the entire submission
         handleError(upvoteError, 'Auto-upvote failed');
       }
 
       // Reset form state
       resetForm();
       
+      // Refresh the song list AFTER upvote is done
       try {
-        // Immediate refresh
         await Promise.resolve(onSongAdded());
-        
-        // Secondary refresh to catch database updates
-        setTimeout(async () => {
-          await Promise.resolve(onSongAdded());
-        }, 1000);
-        
       } catch (refreshError) {
+        // Log but don't prevent success state
         handleError(refreshError, 'Failed to refresh song list after submission');
       }
       
