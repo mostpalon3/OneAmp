@@ -80,7 +80,7 @@ export default function JamPage({
         currentTime: "0:00",
         platform: "youtube",
         videoId: "",
-        thumbnail: "/placeholder.svg",
+        thumbnail: "/images/not.png",
         votes: 0,
       };
 

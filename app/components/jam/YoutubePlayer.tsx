@@ -3,6 +3,7 @@
 import { FaYoutube, FaHeart, FaMusic, FaPlus } from "react-icons/fa"
 import { HiOutlineMusicalNote } from "react-icons/hi2"
 import { useEffect, useRef, useState } from "react"
+import { MdOutlineDoNotDisturb } from "react-icons/md";
 
 interface YouTubePlayerProps {
   currentVideo: {
@@ -36,7 +37,6 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [currentVideoId, setCurrentVideoId] = useState<string>("");
   const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const [shouldAutoplay, setShouldAutoplay] = useState(false);
 
   // Function to initialize YouTube player
   const initializePlayer = (videoId: string) => {
@@ -250,7 +250,7 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
     <div className="space-y-4">
       <div className="flex items-center space-x-4">
         <img
-          src={currentVideo.thumbnail || "/placeholder.svg"}
+          src={currentVideo.thumbnail || "/images/not.png"}
           alt={currentVideo.title}
           className="w-20 h-15 md:w-auto md:h-20 rounded-lg object-cover"
         />
@@ -298,28 +298,28 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
           )}
         </div>
       ) : (
-        <div className="aspect-video w-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200 mt-2.5">
+        <div className="aspect-video w-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200 mt-2.5 pt-2.5 md:pt-0">
           <div className="text-center text-gray-600 max-w-md px-6">
             {/* Animated Icons */}
             <div className="relative mb-6">
               <div className="flex justify-center items-center space-x-4">
                 <div className="animate-bounce delay-0">
-                  <FaYoutube className="w-12 h-12 text-black" />
+                  <FaYoutube className="md:w-12 md:h-12 w-7 h-7 text-black" />
                 </div>
                 <div className="animate-bounce delay-150">
-                  <HiOutlineMusicalNote className="w-10 h-10 text-black" />
+                  <HiOutlineMusicalNote className="w-6 h-6 md:w-10 md:h-10 text-black" />
                 </div>
                 <div className="animate-bounce delay-300">
-                  <FaMusic className="w-8 h-8 text-black" />
+                  <FaMusic className="w-5 h-5 md:w-8 md:h-8 text-black" />
                 </div>
               </div>
             </div>
             
             {/* Main Message */}
-            <h3 className="text-xl font-semibold text-gray-700 mb-3">
+            <h3 className="md:text-xl font-semibold text-gray-700 mb-3">
               Queue Complete! 🎉
             </h3>
-            <p className="text-gray-600 mb-4 leading-relaxed">
+            <p className="text-gray-600 mb-4 leading-relaxed md:text-md text-xs">
               All tracks have been played. Add some fresh music to keep the party going!
             </p>
             
@@ -331,7 +331,7 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
             
             {/* Fun Stats or Encouragement */}
             <div className="mt-6 pt-4 border-t border-gray-200">
-              <p className="text-sm text-gray-500 italic">
+              <p className="text-xs md:text-sm text-gray-500 italic">
                 "Music is the universal language of mankind" 🎵
               </p>
             </div>
