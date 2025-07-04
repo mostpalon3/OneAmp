@@ -132,49 +132,52 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
   };
 
   const handleSubmitMusic = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!musicPreview) return
+  e.preventDefault()
+  if (!musicPreview) return
 
-    setIsSubmitting(true)
+  setIsSubmitting(true)
 
-    try {
-      console.log("📤 Submitting music...");
-      
-      // Submit the stream
-      const responseData = await submitStream(jamId, musicUrl);
-      const streamId = responseData?.id;
+  try {
+    console.log("📤 Submitting music...");
+    
+    // Submit the stream
+    const responseData = await submitStream(jamId, musicUrl);
+    
+    // 🔥 FIX: Access stream ID from nested structure
+    const streamId = responseData?.stream?.id;  // ✅ Fixed: stream.id instead of id
 
-      if (!streamId) {
-        throw new Error('No stream ID returned from API');
-      }
-
-      // Wait for auto-upvote to complete BEFORE refreshing the UI
-      try {
-        await handleAutoUpvote(streamId);
-        console.log("✅ Auto-upvote completed");
-      } catch (upvoteError) {
-        // Log but don't fail the entire submission
-        handleError(upvoteError, 'Auto-upvote failed');
-      }
-
-      // Reset form state
-      resetForm();
-      
-      // Refresh the song list AFTER upvote is done
-      try {
-        await Promise.resolve(onSongAdded());
-      } catch (refreshError) {
-        // Log but don't prevent success state
-        handleError(refreshError, 'Failed to refresh song list after submission');
-      }
-      
-    } catch (error) {
-      const errorMessage = handleError(error, 'Failed to submit music');
-      setError(`Failed to submit music: ${errorMessage}`);
-    } finally {
-      setIsSubmitting(false)
+    if (!streamId) {
+      console.error('Response structure:', responseData);
+      throw new Error('No stream ID returned from API');
     }
+
+    // Wait for auto-upvote to complete BEFORE refreshing the UI
+    try {
+      await handleAutoUpvote(streamId);
+      console.log("✅ Auto-upvote completed");
+    } catch (upvoteError) {
+      // Log but don't fail the entire submission
+      handleError(upvoteError, 'Auto-upvote failed');
+    }
+
+    // Reset form state
+    resetForm();
+    
+    // Refresh the song list AFTER upvote is done
+    try {
+      await Promise.resolve(onSongAdded());
+    } catch (refreshError) {
+      // Log but don't prevent success state
+      handleError(refreshError, 'Failed to refresh song list after submission');
+    }
+    
+  } catch (error) {
+    const errorMessage = handleError(error, 'Failed to submit music');
+    setError(`Failed to submit music: ${errorMessage}`);
+  } finally {
+    setIsSubmitting(false)
   }
+}
 
   return (
     <Card className="border-gray-200">
