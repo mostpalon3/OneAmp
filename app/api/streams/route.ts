@@ -321,34 +321,52 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
 
-    // Get user votes in a separate optimized query only if needed
-    const streamIds = streamsData.map(s => s.id);
-    const activeStreamId = activeStreamData?.stream?.id;
+    // 🔥 ADD: Try to get cached user votes first
+    const cachedUserVotes = await StreamCacheService.getCachedUserVotes(user.id, jamId);
     
-    const allStreamIds = activeStreamId 
-      ? [...streamIds, activeStreamId]
-      : streamIds;
+    let upvoteMap: Set<string>, downvoteMap: Set<string>;
+    
+    if (cachedUserVotes) {
+      console.log(`✅ Cache HIT for user votes in jam: ${jamId}`);
+      upvoteMap = new Set(cachedUserVotes.upvotes);
+      downvoteMap = new Set(cachedUserVotes.downvotes);
+    } else {
+      console.log(`❌ Cache MISS for user votes in jam: ${jamId}`);
+      // Get user votes in a separate optimized query only if needed
+      const streamIds = streamsData.map(s => s.id);
+      const activeStreamId = activeStreamData?.stream?.id;
+      
+      const allStreamIds = activeStreamId 
+        ? [...streamIds, activeStreamId]
+        : streamIds;
 
-    const userVotes = allStreamIds.length > 0 ? await prismaClient.$transaction([
-      prismaClient.upvote.findMany({
-        where: {
-          userId: user.id,
-          streamId: { in: allStreamIds }
-        },
-        select: { streamId: true }
-      }),
-      prismaClient.downvote.findMany({
-        where: {
-          userId: user.id,
-          streamId: { in: allStreamIds }
-        },
-        select: { streamId: true }
-      })
-    ]) : [[], []];
+      const userVotes = allStreamIds.length > 0 ? await prismaClient.$transaction([
+        prismaClient.upvote.findMany({
+          where: {
+            userId: user.id,
+            streamId: { in: allStreamIds }
+          },
+          select: { streamId: true }
+        }),
+        prismaClient.downvote.findMany({
+          where: {
+            userId: user.id,
+            streamId: { in: allStreamIds }
+          },
+          select: { streamId: true }
+        })
+      ]) : [[], []];
 
-    const [upvotes, downvotes] = userVotes;
-    const upvoteMap = new Set(upvotes.map(v => v.streamId));
-    const downvoteMap = new Set(downvotes.map(v => v.streamId));
+      const [upvotes, downvotes] = userVotes;
+      upvoteMap = new Set(upvotes.map(v => v.streamId));
+      downvoteMap = new Set(downvotes.map(v => v.streamId));
+
+      // 🔥 ADD: Cache the user votes
+      await StreamCacheService.cacheUserVotes(user.id, jamId, {
+        upvotes: upvotes.map(v => v.streamId),
+        downvotes: downvotes.map(v => v.streamId)
+      });
+    }
 
     // Transform data efficiently
     const streamsWithVotes = streamsData.map(stream => ({
