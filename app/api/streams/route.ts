@@ -4,6 +4,7 @@ import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/lib/auth"
 import { StreamCacheService } from '@/app/lib/redis/stream-cache';
+import { DashboardCacheService } from '@/app/lib/redis/dashboard-cache'; // 🔥 ADD
 
 // import { getServerSession } from "next-auth";
 // import { GET as handler } from "@/app/api/auth/[...nextauth]/route";
@@ -200,30 +201,34 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // 🔥 REDIS INTEGRATION: Invalidate cache after adding new stream
+    // Get jam owner for cache invalidation
+    const jam = await prismaClient.jam.findUnique({
+      where: { id: data.jamId },
+      select: { userId: true }
+    });
+
+    // 🔥 Invalidate relevant caches after adding stream
     await Promise.all([
       StreamCacheService.invalidateStreamCache(data.jamId),
       StreamCacheService.publishStreamUpdate(data.jamId, {
         type: 'stream_added',
         streamId: stream.id,
-        title: stream.title,
-        artist: stream.artist
-      })
+        jamId: data.jamId
+      }),
+      // 🔥 NEW: Invalidate dashboard caches when stream count changes
+      DashboardCacheService.invalidateJamStats(data.jamId),
+      jam?.userId ? DashboardCacheService.invalidateUserJamsList(jam.userId) : Promise.resolve(),
+      jam?.userId ? DashboardCacheService.invalidateUserDashboard(jam.userId) : Promise.resolve(),
     ]);
 
     return NextResponse.json({
       message: "Stream added successfully",
-      ...stream,
-    }, {
-      status: 201
-    });
+      stream,
+    }, { status: 201 });
+
   } catch (error) {
-    return NextResponse.json({
-      message: "Error while adding a stream",
-      error: error instanceof Error ? error.message : "Unknown error occurred"
-    }, {
-      status: 500
-    });
+    console.error("Error adding stream:", error);
+    return NextResponse.json("Internal Server Error", { status: 500 });
   }
 }
 

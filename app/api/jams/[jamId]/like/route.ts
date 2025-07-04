@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prismaClient from '@/app/lib/db';
+import { DashboardCacheService } from '@/app/lib/redis/dashboard-cache'; // 🔥 NEW
 
 const devId = "16a7dae2-d8fb-4743-8ba5-78555959eefd"
 
@@ -25,16 +26,16 @@ export async function POST(
 
     const { jamId } = await params;
 
-    // Check if jam exists
+    // Get jam info for cache invalidation
     const jam = await prismaClient.jam.findUnique({
-      where: { id: jamId }
+      where: { id: jamId },
+      select: { userId: true }
     });
 
     if (!jam) {
       return NextResponse.json({ error: 'Jam not found' }, { status: 404 });
     }
 
-    // Check if already liked
     const existingLike = await prismaClient.jamLike.findUnique({
       where: {
         userId_jamId: {
@@ -44,9 +45,11 @@ export async function POST(
       }
     });
 
+    let updatedJam;
+
     if (existingLike) {
-      // If already liked, delete the like (toggle off)
-      const [_, updatedJam] = await prismaClient.$transaction([
+      // Remove like
+      const [_, jamUpdate] = await prismaClient.$transaction([
         prismaClient.jamLike.delete({
           where: {
             userId_jamId: {
@@ -64,40 +67,43 @@ export async function POST(
           }
         })
       ]);
-
-      return NextResponse.json({
-        success: true,
-        likesCount: updatedJam.likesCount,
-        liked: false
-      });
+      updatedJam = jamUpdate;
+    } else {
+      // Add like
+      const [_, jamUpdate] = await prismaClient.$transaction([
+        prismaClient.jamLike.create({
+          data: {
+            userId: user.id,
+            jamId: jamId
+          }
+        }),
+        prismaClient.jam.update({
+          where: { id: jamId },
+          data: {
+            likesCount: {
+              increment: 1
+            }
+          }
+        })
+      ]);
+      updatedJam = jamUpdate;
     }
 
-    // Create like and update likes count
-    const [_, updatedJam] = await prismaClient.$transaction([
-      prismaClient.jamLike.create({
-        data: {
-          userId: user.id,
-          jamId: jamId
-        }
-      }),
-      prismaClient.jam.update({
-        where: { id: jamId },
-        data: {
-          likesCount: {
-            increment: 1
-          }
-        }
-      })
+    // 🔥 Invalidate relevant caches after like change
+    await Promise.all([
+      DashboardCacheService.invalidateJamStats(jamId),
+      DashboardCacheService.invalidateUserJamsList(jam.userId),
+      DashboardCacheService.invalidateUserDashboard(jam.userId),
     ]);
 
     return NextResponse.json({
       success: true,
       likesCount: updatedJam.likesCount,
-      liked: true
+      liked: !existingLike
     });
 
   } catch (error) {
-    console.error('Error liking jam:', error);
+    console.error('Error toggling like:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

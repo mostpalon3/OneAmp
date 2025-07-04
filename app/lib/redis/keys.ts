@@ -17,6 +17,12 @@ export const REDIS_KEYS = {
   // Real-time vote updates - pub/sub channels
   VOTE_UPDATES: (jamId: string) => `vote_updates:${jamId}`,
   STREAM_UPDATES: (jamId: string) => `stream_updates:${jamId}`,
+
+  // 🔥 NEW: Dashboard cache keys
+  USER_PROFILE: (userId: string) => `user_profile:${userId}`,
+  USER_JAMS_LIST: (userId: string) => `user_jams_list:${userId}`,
+  JAM_STATS: (jamId: string) => `jam_stats:${jamId}`,
+  USER_DASHBOARD: (userId: string) => `user_dashboard:${userId}`,
 };
 
 export const CACHE_TTL = {
@@ -25,4 +31,10 @@ export const CACHE_TTL = {
   VOTE_COUNTS: 10, // 10 seconds
   USER_VOTES: 30, // 30 seconds
   VIDEO_PREVIEW: 86400, // 24 hours (video metadata rarely changes)
+
+  // 🔥 NEW: Dashboard cache TTLs
+  USER_PROFILE: 86400,      // 30 minutes - user profile data
+  USER_JAMS_LIST: 1800,     // 5 minutes - user's jam list
+  JAM_STATS: 300,           // 1 minute - jam statistics (songs, likes)
+  USER_DASHBOARD: 300,     // 5 minutes - complete dashboard data
 };
