@@ -1,6 +1,7 @@
 import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { StreamCacheService } from '@/app/lib/redis/stream-cache';
 
 export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId: string }>} ) {
     try {
@@ -48,6 +49,9 @@ export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId
                 });
             }
 
+            // Invalidate cache when queue becomes empty
+            await StreamCacheService.invalidateStreamCache(jamId);
+
             return NextResponse.json({
                 message: "Queue is empty - reset to fallback",
                 queueEmpty: true
@@ -83,6 +87,16 @@ export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId
                 jamId: jamId,
                 streamId: updatedStream.id
             }
+        });
+
+        // 🔥 KEY FIX: Invalidate cache after database changes
+        await StreamCacheService.invalidateStreamCache(jamId);
+        
+        // 🔥 OPTIONAL: Publish real-time update
+        await StreamCacheService.publishStreamUpdate(jamId, {
+            type: 'next_stream',
+            newActiveStreamId: updatedStream.id,
+            queueEmpty: false
         });
 
         return NextResponse.json({
