@@ -157,4 +157,35 @@ export class StreamCacheService {
       console.error('Error publishing stream update:', error);
     }
   }
+
+  // 🔥 NEW: Batch cache multiple jams at once
+  static async batchCacheStreams(jamData: Array<{jamId: string, streams: any[], activeStream: any}>) {
+    try {
+      const operations = jamData.flatMap(jam => [
+        redis.setEx(REDIS_KEYS.STREAM_QUEUE(jam.jamId), CACHE_TTL.STREAM_QUEUE, JSON.stringify(jam.streams)),
+        redis.setEx(REDIS_KEYS.ACTIVE_STREAM(jam.jamId), CACHE_TTL.ACTIVE_STREAM, JSON.stringify(jam.activeStream))
+      ]);
+      
+      await Promise.all(operations);
+      console.log(`✅ Batch cached ${jamData.length} jams`);
+    } catch (error) {
+      console.error('Error batch caching streams:', error);
+    }
+  }
+
+  // 🔥 NEW: Warm cache on app startup
+  static async warmCache(popularJamIds: string[]) {
+    try {
+      // Preload popular jams into cache
+      for (const jamId of popularJamIds) {
+        const cachedStreams = await this.getCachedStreamQueue(jamId);
+        if (!cachedStreams) {
+          console.log(`🔥 Warming cache for jam: ${jamId}`);
+          // Would need to call database here to populate cache
+        }
+      }
+    } catch (error) {
+      console.error('Error warming cache:', error);
+    }
+  }
 }

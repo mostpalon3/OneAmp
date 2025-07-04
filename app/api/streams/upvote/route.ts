@@ -21,6 +21,18 @@ export async function POST(req: NextRequest) {
         const userEmail = session.user.email;
         const data = UpvoteSchema.parse(await req.json());
 
+        // Get user before transaction so it's available outside
+        const user = await prismaClient.user.findUnique({
+            where: { email: userEmail },
+            select: { id: true }
+        });
+
+        if (!user) {
+            return NextResponse.json({
+                message: "User not found"
+            }, { status: 404 });
+        }
+
         // Get jamId from the stream
         const stream = await prismaClient.stream.findUnique({
             where: { id: data.streamId },
@@ -34,15 +46,7 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await prismaClient.$transaction(async (tx) => {
-            // Get user efficiently
-            const user = await tx.user.findUnique({
-                where: { email: userEmail },
-                select: { id: true }
-            });
-
-            if (!user) {
-                throw new Error("User not found");
-            }
+            // user is already fetched above
 
             // Check existing votes in parallel
             const [existingUpvote, existingDownvote] = await Promise.all([
@@ -112,13 +116,13 @@ export async function POST(req: NextRequest) {
             StreamCacheService.invalidateStreamCache(stream.jamId),
             
             // Invalidate user votes cache for this user
-            StreamCacheService.invalidateUserVotes(userEmail, stream.jamId),
+            StreamCacheService.invalidateUserVotes(user.id, stream.jamId),
             
             // Publish real-time vote update
             StreamCacheService.publishVoteUpdate(stream.jamId, data.streamId, {
                 action: result.action,
                 type: 'upvote',
-                userId: userEmail
+                userId: user.id // ✅ Changed from userEmail to user.id
             })
         ]);
 

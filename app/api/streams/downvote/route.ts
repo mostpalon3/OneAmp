@@ -21,6 +21,18 @@ export async function POST(req: NextRequest) {
         const userEmail = session.user.email;
         const data = DownvoteSchema.parse(await req.json());
 
+        // 🔥 NEW: Get user BEFORE transaction
+        const user = await prismaClient.user.findUnique({
+            where: { email: userEmail },
+            select: { id: true }
+        });
+
+        if (!user) {
+            return NextResponse.json({
+                message: "User not found"
+            }, { status: 404 });
+        }
+
         // Get jamId from the stream
         const stream = await prismaClient.stream.findUnique({
             where: { id: data.streamId },
@@ -34,16 +46,8 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await prismaClient.$transaction(async (tx) => {
-            // Get user efficiently
-            const user = await tx.user.findUnique({
-                where: { email: userEmail },
-                select: { id: true }
-            });
-
-            if (!user) {
-                throw new Error("User not found");
-            }
-
+            // 🔥 REMOVED: User lookup from transaction (already done above)
+            
             // Check existing votes in parallel
             const [existingUpvote, existingDownvote] = await Promise.all([
                 tx.upvote.findUnique({
@@ -106,19 +110,14 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        // 🔥 REDIS INTEGRATION: Invalidate cache and publish real-time update
+        // 🔥 FIXED: Use user.id instead of userEmail
         await Promise.all([
-            // Invalidate stream cache for this jam
             StreamCacheService.invalidateStreamCache(stream.jamId),
-            
-            // Invalidate user votes cache for this user
-            StreamCacheService.invalidateUserVotes(userEmail, stream.jamId),
-            
-            // Publish real-time vote update
+            StreamCacheService.invalidateUserVotes(user.id, stream.jamId), // ✅ Fixed
             StreamCacheService.publishVoteUpdate(stream.jamId, data.streamId, {
                 action: result.action,
                 type: 'downvote',
-                userId: userEmail
+                userId: user.id // ✅ Also use user.id here for consistency
             })
         ]);
 
