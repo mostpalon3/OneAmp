@@ -5,9 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Link from "next/link"
 import { FaPlus, FaHashtag, FaPlay } from "react-icons/fa"
 import { BiMusic } from "react-icons/bi"
+import { signOut } from "next-auth/react"
 
 interface DashboardHeaderProps {
   jamName: string
@@ -44,17 +44,21 @@ export function DashboardHeader({
   handleJoinJam,
   genres
 }: DashboardHeaderProps) {
+
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="border-b border-gray-200 bg-white">
       <div className="container mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
+        {/* Logo */}
+        <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-            <BiMusic className="w-5 h-5 text-white" />
+            <span className="text-white font-bold">O</span>
           </div>
           <span className="text-xl font-bold text-black">OneAmp</span>
-        </Link>
+        </div>
 
+        {/* Actions */}
         <div className="flex items-center space-x-4">
+          {/* Join Jam Dialog */}
           <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
@@ -114,6 +118,7 @@ export function DashboardHeader({
             </DialogContent>
           </Dialog>
 
+          {/* Create Jam Dialog */}
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-black text-white hover:bg-gray-800">
@@ -188,6 +193,16 @@ export function DashboardHeader({
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Sign Out Button - matching home page style */}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-gray-600 hover:text-black text-sm px-4" 
+            onClick={() => signOut()}
+          >
+            <span>Sign out</span>
+          </Button>
         </div>
       </div>
     </header>
