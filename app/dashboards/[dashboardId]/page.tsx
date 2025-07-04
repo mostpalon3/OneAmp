@@ -698,7 +698,7 @@ useEffect(() => {
             </Card>
 
             {/* Platform Stats */}
-            <Card className="border-gray-200">
+            {/* <Card className="border-gray-200">
               <CardHeader>
                 <CardTitle className="text-black text-sm">Platform Stats</CardTitle>
               </CardHeader>
@@ -720,10 +720,10 @@ useEffect(() => {
                   <span className="font-semibold text-black">45,123</span>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Quick Actions */}
-            <Card className="border-gray-200">
+            {/* <Card className="border-gray-200">
               <CardHeader>
                 <CardTitle className="text-sm text-black">Quick Actions</CardTitle>
               </CardHeader>
@@ -753,7 +753,7 @@ useEffect(() => {
                   Following
                 </Button>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </div>
