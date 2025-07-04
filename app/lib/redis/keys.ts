@@ -1,5 +1,5 @@
 export const REDIS_KEYS = {
-  // Stream queue cache - expires every 30 seconds
+  // Stream queue cache - expires every 60 seconds
   STREAM_QUEUE: (jamId: string) => `queue:${jamId}`,
   
   // Active stream cache - expires every 60 seconds
