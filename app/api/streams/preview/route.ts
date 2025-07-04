@@ -1,6 +1,7 @@
 // /api/streams/preview/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { StreamCacheService } from '@/app/lib/redis/stream-cache';
 
 const PreviewSchema = z.object({
   url: z.string()
@@ -136,11 +137,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // 🔥 REDIS INTEGRATION: Try to get cached preview first
+    const cachedPreview = await StreamCacheService.getCachedVideoPreview(extractedId);
+    
+    if (cachedPreview) {
+      console.log(`✅ Cache HIT for video preview: ${extractedId}`);
+      return NextResponse.json({
+        ...cachedPreview,
+        source: 'cache' // For debugging
+      });
+    }
+
+    console.log(`❌ Cache MISS for video preview: ${extractedId}, fetching from YouTube API`);
+
+    // If not cached, fetch from YouTube API
     const res = await getVideoDetails(extractedId);
     const thumbnails = res.thumbnail.thumbnails;
+    
+    // Sort thumbnails by width
     thumbnails.sort((a: {width: number}, b: {width: number}) => a.width < b.width ? -1 : 1);
 
-    return NextResponse.json({
+    const previewData = {
       title: res.title,
       artist: res.channelTitle,
       duration: parseDuration(res.duration),
@@ -149,9 +166,40 @@ export async function POST(req: NextRequest) {
       extractedId,
       channelTitle: res.channelTitle,
       publishedAt: res.publishedAt,
-      viewCount: res.viewCount
-    });
+      viewCount: res.viewCount,
+      source: 'api' // For debugging
+    };
+
+    // 🔥 REDIS INTEGRATION: Cache the preview data
+    await StreamCacheService.cacheVideoPreview(extractedId, previewData);
+
+    console.log(`✅ Successfully cached preview for: ${res.title}`);
+
+    return NextResponse.json(previewData);
   } catch (error) {
+    console.error('Preview API error:', error);
+    
+    // More specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('YouTube API key not configured')) {
+        return NextResponse.json({
+          message: "YouTube API configuration error"
+        }, { status: 500 });
+      }
+      
+      if (error.message.includes('YouTube API request failed')) {
+        return NextResponse.json({
+          message: "Failed to fetch video details from YouTube"
+        }, { status: 502 });
+      }
+      
+      if (error.message.includes('Video not found')) {
+        return NextResponse.json({
+          message: "Video not found or is private/unavailable"
+        }, { status: 404 });
+      }
+    }
+    
     return NextResponse.json({
       message: "Error while fetching video preview",
       error: error instanceof Error ? error.message : "Unknown error occurred"

@@ -136,7 +136,7 @@ async function getVideoDetails(videoId: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions); // 👈 Pass authOptions
+    const session = await getServerSession(authOptions);
     const data = CreateStreamSchema.parse(await req.json());
     const isDev = process.env.NODE_ENV === "development";
 
@@ -182,22 +182,34 @@ export async function POST(req: NextRequest) {
     }
 
 
+    // Create stream
     const stream = await prismaClient.stream.create({
       data: {
         title: res.title,
-        userId: session?.user?.id ?? devId, // fallback for dev mode
+        userId: session?.user?.id ?? devId,
         jamId: data.jamId,
         url: data.url,
         extractedId,
         type: "YouTube",
         smallImg: (thumbnails.length > 1 ? thumbnails[thumbnails.length - 2].url : thumbnails[thumbnails.length - 1].url) ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1dcc99fa72.jpg",
-        bigImg: thumbnails[thumbnails.length - 1].url ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1d1cc99fa72.jpg",
+        bigImg: thumbnails[thumbnails.length - 1].url ?? "https://i.pinimg.com/736x/22/f4/28/22f4285d816b01de00ebfd1dcc99fa72.jpg",
         duration: parseDuration(res.duration),
         artist: res.channelTitle,
         played: false,
         submittedBy: session?.user?.name ?? "anonymous",
       }
     });
+
+    // 🔥 REDIS INTEGRATION: Invalidate cache after adding new stream
+    await Promise.all([
+      StreamCacheService.invalidateStreamCache(data.jamId),
+      StreamCacheService.publishStreamUpdate(data.jamId, {
+        type: 'stream_added',
+        streamId: stream.id,
+        title: stream.title,
+        artist: stream.artist
+      })
+    ]);
 
     return NextResponse.json({
       message: "Stream added successfully",
@@ -210,8 +222,8 @@ export async function POST(req: NextRequest) {
       message: "Error while adding a stream",
       error: error instanceof Error ? error.message : "Unknown error occurred"
     }, {
-      status: 411
-    })
+      status: 500
+    });
   }
 }
 

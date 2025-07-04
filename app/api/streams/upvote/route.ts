@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
         }
 
         const userEmail = session.user.email;
-
         const data = UpvoteSchema.parse(await req.json());
 
         // Get jamId from the stream
@@ -27,6 +26,12 @@ export async function POST(req: NextRequest) {
             where: { id: data.streamId },
             select: { jamId: true }
         });
+
+        if (!stream) {
+            return NextResponse.json({
+                message: "Stream not found"
+            }, { status: 404 });
+        }
 
         const result = await prismaClient.$transaction(async (tx) => {
             // Get user efficiently
@@ -101,14 +106,21 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        // Invalidate cache and publish real-time update
-        if (stream?.jamId) {
-            await StreamCacheService.invalidateStreamCache(stream.jamId);
-            await StreamCacheService.publishVoteUpdate(stream.jamId, data.streamId, {
+        // 🔥 REDIS INTEGRATION: Invalidate cache and publish real-time update
+        await Promise.all([
+            // Invalidate stream cache for this jam
+            StreamCacheService.invalidateStreamCache(stream.jamId),
+            
+            // Invalidate user votes cache for this user
+            StreamCacheService.invalidateUserVotes(userEmail, stream.jamId),
+            
+            // Publish real-time vote update
+            StreamCacheService.publishVoteUpdate(stream.jamId, data.streamId, {
                 action: result.action,
-                type: 'upvote'
-            });
-        }
+                type: 'upvote',
+                userId: userEmail
+            })
+        ]);
 
         return NextResponse.json(result, { 
             status: result.action === "added" ? 201 : 200 

@@ -11,6 +11,9 @@ export const REDIS_KEYS = {
   // User vote status cache - expires every 30 seconds
   USER_VOTES: (userId: string, jamId: string) => `user_votes:${userId}:${jamId}`,
   
+  // 🔥 NEW: Video preview cache - expires every 24 hours
+  VIDEO_PREVIEW: (videoId: string) => `preview:${videoId}`,
+  
   // Real-time vote updates - pub/sub channels
   VOTE_UPDATES: (jamId: string) => `vote_updates:${jamId}`,
   STREAM_UPDATES: (jamId: string) => `stream_updates:${jamId}`,
@@ -21,4 +24,5 @@ export const CACHE_TTL = {
   ACTIVE_STREAM: 60, // 60 seconds
   VOTE_COUNTS: 10, // 10 seconds
   USER_VOTES: 30, // 30 seconds
+  VIDEO_PREVIEW: 86400, // 24 hours (video metadata rarely changes)
 };

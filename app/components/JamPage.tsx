@@ -9,7 +9,7 @@ import { PlayNextButton } from "./jam/PlayNextButton"
 import { JamStats } from "./jam/JamStats"
 import { Song, CurrentVideo, JamStats as JamStatsType } from "@/app/lib/types/jam-types"
 import { refreshStreams, voteOnStream } from "@/app/lib/utils/api-utils"
-import { REFRESH_INTERVAL_MS } from "@/app/lib/constants/stream-constants"
+// import { POLLING_INTERVAL } from "@/app/lib/constants/stream-constants"
 import { AddMusicForm } from "./jam/AddMusicForm"
 import { QRCodeShare } from "./jam/HandleShare"
 import { Toaster } from "react-hot-toast"
@@ -36,9 +36,52 @@ export default function JamPage({
   })
   const [isLoading, setIsLoading] = useState(false)
   const [currentPlayTime, setCurrentPlayTime] = useState(0)
+  const [isUserActive, setIsUserActive] = useState(true);
+  const [pollingInterval, setPollingInterval] = useState(2000);
+
+  // Track user activity
+  useEffect(() => {
+    let activityTimer: NodeJS.Timeout;
+
+    const resetActivityTimer = () => {
+      setIsUserActive(true);
+      clearTimeout(activityTimer);
+      
+      // Consider user inactive after 30 seconds of no activity
+      activityTimer = setTimeout(() => {
+        setIsUserActive(false);
+      }, 30000);
+    };
+
+    // Listen for user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => {
+      document.addEventListener(event, resetActivityTimer, true);
+    });
+
+    resetActivityTimer(); // Initial call
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, resetActivityTimer, true);
+      });
+      clearTimeout(activityTimer);
+    };
+  }, []);
+
+  // Adjust polling based on user activity
+  useEffect(() => {
+    if (isUserActive) {
+      setPollingInterval(1500); // Fast polling for active users
+      console.log("User is active, polling at 1500ms interval");
+    } else {
+      console.log("User is inactive, slowing down polling");
+      setPollingInterval(10000); // Slower polling for inactive users
+    }
+  }, [isUserActive]);
 
 
-  const fetchInitialStreams = async () => {
+  const fetchInitialStreams = useCallback(async () => {
     const streams = await refreshStreams(jamId);
     if (streams) {
       const transformedStreams = streams.streams.map((stream: any) => ({
@@ -87,7 +130,7 @@ export default function JamPage({
       setQueue(sortedStreams);
       setCurrentVideo(currentTransformedStream);
     }
-  };
+  }, [jamId, pollingInterval]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -99,7 +142,7 @@ export default function JamPage({
     fetchInitialStreams();
     const interval = setInterval(() => {
       fetchInitialStreams();
-    }, REFRESH_INTERVAL_MS);
+    }, pollingInterval);
 
     return () => clearInterval(interval);
   }, [jamId]);

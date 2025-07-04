@@ -1,68 +1,218 @@
 import { createClient } from 'redis';
 
-const isProduction = process.env.NODE_ENV === 'production';
+// Global singleton instance
+let redisInstance: ReturnType<typeof createClient> | null = null;
+let isConnecting = false;
+let connectionAttempts = 0;
+const MAX_CONNECTION_ATTEMPTS = 3;
 
-export const redis = createClient({
+const createRedisClient = () => {
+  if (redisInstance) {
+    return redisInstance;
+  }
+
+  redisInstance = createClient({
     username: process.env.REDIS_USERNAME || 'default',
     password: process.env.REDIS_PASSWORD || '',
     socket: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        connectTimeout: isProduction ? 15000 : 10000, // Longer timeout in production
-        keepAlive: true,
-    }
-});
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      connectTimeout: 10000,
+      keepAlive: true,
+      // 🔥 CRITICAL: Disable automatic reconnection to prevent loop
+      reconnectStrategy: (retries) => {
+        if (retries > MAX_CONNECTION_ATTEMPTS) {
+          console.error('❌ Redis: Max reconnection attempts reached, giving up');
+          return false; // Stop reconnecting
+        }
+        // Exponential backoff to prevent rapid reconnections
+        return Math.min(retries * 2000, 10000);
+      },
+    },
+  });
 
-redis.on('error', (err) => {
-    console.error('Redis Client Error:', err);
-    // In production, you might want to send this to error monitoring
-    if (isProduction) {
-        // Add error monitoring service like Sentry here
-        // sentry.captureException(err);
+  redisInstance.on('error', (err: any) => {
+    console.error('Redis Client Error:', err.message);
+    
+    if (err.message.includes('max number of clients reached')) {
+      console.log('⚠️ Redis connection limit reached, disabling Redis for 30 seconds');
+      // Disable Redis temporarily
+      setTimeout(() => {
+        connectionAttempts = 0;
+        console.log('🔄 Redis connection attempts reset');
+      }, 30000);
     }
-});
+  });
 
-redis.on('connect', () => {
+  redisInstance.on('connect', () => {
     console.log(`✅ Redis Connected to: ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);
-});
+    connectionAttempts = 0; // Reset on successful connection
+    isConnecting = false;
+  });
 
-redis.on('ready', () => {
+  redisInstance.on('ready', () => {
     console.log('✅ Redis Ready');
-});
+  });
 
-redis.on('reconnecting', () => {
+  redisInstance.on('reconnecting', () => {
     console.log('🔄 Redis Reconnecting...');
-});
+  });
 
-// Graceful shutdown handling
-process.on('SIGINT', async () => {
-    console.log('Gracefully shutting down Redis connection...');
-    await redis.quit();
-    process.exit(0);
-});
+  redisInstance.on('end', () => {
+    console.log('🔴 Redis Connection Ended');
+    isConnecting = false;
+  });
 
-process.on('SIGTERM', async () => {
-    console.log('Gracefully shutting down Redis connection...');
-    await redis.quit();
-    process.exit(0);
-});
-
-// Connect with better error handling
-const connectRedis = async () => {
-    try {
-        if (!redis.isOpen) {
-            await redis.connect();
-            console.log('✅ Redis connection established successfully');
-        }
-    } catch (error) {
-        console.error('❌ Failed to connect to Redis:', error);
-        if (isProduction) {
-            // In production, you might want to implement circuit breaker
-            console.log('🔄 Redis unavailable, using database fallback');
-        }
-    }
+  return redisInstance;
 };
 
-connectRedis();
+// Create the singleton instance
+const redisClient = createRedisClient();
+
+// 🔥 CRITICAL: Prevent multiple connection attempts
+const ensureConnection = async () => {
+  // If already connecting, wait
+  if (isConnecting) {
+    console.log('⏳ Redis connection already in progress, waiting...');
+    return;
+  }
+
+  // If too many attempts, use database fallback
+  if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+    console.log('❌ Redis max attempts reached, using database fallback');
+    return;
+  }
+
+  try {
+    if (!redisClient.isOpen && !isConnecting) {
+      isConnecting = true;
+      connectionAttempts++;
+      
+      console.log(`🔄 Attempting Redis connection (${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})`);
+      await redisClient.connect();
+      console.log('✅ Redis connection established successfully');
+    }
+  } catch (error) {
+    console.error('❌ Failed to connect to Redis:', error);
+    isConnecting = false;
+    
+    if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+      console.log('💾 Switching to database-only mode for 30 seconds');
+    }
+  }
+};
+
+// 🔥 SAFE Redis wrapper with circuit breaker pattern
+export const redis = {
+  async get(key: string) {
+    try {
+      if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+        return null; // Skip Redis, use database
+      }
+      
+      await ensureConnection();
+      if (!redisClient.isOpen) return null;
+      
+      return await redisClient.get(key);
+    } catch (error) {
+      console.error('Redis GET error:', error);
+      return null;
+    }
+  },
+
+  async setEx(key: string, seconds: number, value: string) {
+    try {
+      if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+        return null; // Skip Redis caching
+      }
+      
+      await ensureConnection();
+      if (!redisClient.isOpen) return null;
+      
+      return await redisClient.setEx(key, seconds, value);
+    } catch (error) {
+      console.error('Redis SETEX error:', error);
+      return null;
+    }
+  },
+
+  async del(key: string) {
+    try {
+      if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+        return null; // Skip Redis deletion
+      }
+      
+      await ensureConnection();
+      if (!redisClient.isOpen) return null;
+      
+      return await redisClient.del(key);
+    } catch (error) {
+      console.error('Redis DEL error:', error);
+      return null;
+    }
+  },
+
+  async publish(channel: string, message: string) {
+    try {
+      if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+        return null; // Skip Redis publish
+      }
+      
+      await ensureConnection();
+      if (!redisClient.isOpen) return null;
+      
+      return await redisClient.publish(channel, message);
+    } catch (error) {
+      console.error('Redis PUBLISH error:', error);
+      return null;
+    }
+  },
+
+  // Health check method
+  async ping() {
+    try {
+      if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+        return null;
+      }
+      
+      await ensureConnection();
+      if (!redisClient.isOpen) return null;
+      
+      return await redisClient.ping();
+    } catch (error) {
+      console.error('Redis PING error:', error);
+      return null;
+    }
+  },
+
+  // Get connection status
+  get isConnected() {
+    return redisClient.isOpen && connectionAttempts < MAX_CONNECTION_ATTEMPTS;
+  },
+
+  // Manual reset function
+  resetConnection() {
+    connectionAttempts = 0;
+    isConnecting = false;
+    console.log('🔄 Redis connection manually reset');
+  }
+};
+
+// Graceful shutdown
+const shutdown = async () => {
+  if (redisInstance && redisClient.isOpen) {
+    console.log('🔄 Shutting down Redis connection...');
+    try {
+      await redisClient.quit();
+      console.log('✅ Redis connection closed');
+    } catch (error) {
+      console.error('Error closing Redis connection:', error);
+    }
+  }
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+process.on('beforeExit', shutdown);
 
 export default redis;
