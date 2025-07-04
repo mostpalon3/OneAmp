@@ -3,13 +3,18 @@ import { z } from "zod";
 import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/lib/auth"
+import { StreamCacheService } from '@/app/lib/redis/stream-cache';
+
 // import { getServerSession } from "next-auth";
 // import { GET as handler } from "@/app/api/auth/[...nextauth]/route";
+
+const devId = "16a7dae2-d8fb-4743-8ba5-78555959eefd"; // Fallback for development mode
+const devMail = "sumitsagar2612@gmail.com"
 
 const CreateStreamSchema = z.object({
   jamId: z.string(),
   url: z.string()
-});
+})
 
 // Helper function to parse YouTube duration format (PT4M13S) to seconds
 function parseDuration(duration: string): number {
@@ -180,7 +185,7 @@ export async function POST(req: NextRequest) {
     const stream = await prismaClient.stream.create({
       data: {
         title: res.title,
-        userId: session?.user?.id ?? "dev-user", // fallback for dev mode
+        userId: session?.user?.id ?? devId, // fallback for dev mode
         jamId: data.jamId,
         url: data.url,
         extractedId,
@@ -216,19 +221,29 @@ export async function GET(req: NextRequest) {
   const jamId = String(searchParams.get('jamId'));
   const session = await getServerSession();
   
-
-  if (!session?.user?.email) {
+  const isDev = process.env.NODE_ENV === "development";
+  if (!session?.user?.email && !isDev) {
     return NextResponse.json({
       message: "Unauthenticated"
     }, { status: 403 });
   }
 
   try {
-    // Single optimized query instead of multiple calls
+    // Try to get from cache first
+    const cachedStreams = await StreamCacheService.getCachedStreamQueue(jamId);
+    const cachedActiveStream = await StreamCacheService.getCachedActiveStream(jamId);
+    
+    if (cachedStreams && cachedActiveStream !== undefined) {
+      return NextResponse.json({
+        streams: cachedStreams,
+        activeStream: cachedActiveStream
+      });
+    }
+
+    // If not in cache, fetch from database
     const [user, streamsData, activeStreamData] = await Promise.all([
-      // Cache user lookup with a more efficient query
       prismaClient.user.findUnique({
-        where: { email: session.user.email },
+        where: { email: session?.user.email || devMail }, 
         select: { id: true } // Only select what we need
       }),
       
@@ -339,6 +354,10 @@ export async function GET(req: NextRequest) {
                  downvoteMap.has(activeStreamData.stream.id) ? "down" : null,
       platform: activeStreamData.stream.type?.toLowerCase() || "youtube"
     } : null;
+
+    // Cache the results
+    await StreamCacheService.cacheStreamQueue(jamId, streamsWithVotes);
+    await StreamCacheService.cacheActiveStream(jamId, activeStreamWithVotes);
 
     return NextResponse.json({
       streams: streamsWithVotes,

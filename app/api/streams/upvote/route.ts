@@ -2,6 +2,7 @@ import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { StreamCacheService } from '@/app/lib/redis/stream-cache';
 
 const UpvoteSchema = z.object({
     streamId: z.string(),
@@ -20,6 +21,12 @@ export async function POST(req: NextRequest) {
         const userEmail = session.user.email;
 
         const data = UpvoteSchema.parse(await req.json());
+
+        // Get jamId from the stream
+        const stream = await prismaClient.stream.findUnique({
+            where: { id: data.streamId },
+            select: { jamId: true }
+        });
 
         const result = await prismaClient.$transaction(async (tx) => {
             // Get user efficiently
@@ -93,6 +100,15 @@ export async function POST(req: NextRequest) {
                 return { action: "added", message: "Upvoted successfully" };
             }
         });
+
+        // Invalidate cache and publish real-time update
+        if (stream?.jamId) {
+            await StreamCacheService.invalidateStreamCache(stream.jamId);
+            await StreamCacheService.publishVoteUpdate(stream.jamId, data.streamId, {
+                action: result.action,
+                type: 'upvote'
+            });
+        }
 
         return NextResponse.json(result, { 
             status: result.action === "added" ? 201 : 200 
