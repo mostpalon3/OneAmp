@@ -113,11 +113,11 @@ export class StreamCacheService {
   }
 
   // Invalidate user votes cache
-  static async invalidateUserVotes(userEmail: string, jamId: string) {
+  static async invalidateUserVotes(userId: string, jamId: string) {
     try {
-      const key = REDIS_KEYS.USER_VOTES(userEmail, jamId);
+      const key = REDIS_KEYS.USER_VOTES(userId, jamId);
       await redis.del(key);
-      console.log(`✅ Invalidated user votes cache for ${userEmail} in jam: ${jamId}`);
+      console.log(`✅ Invalidated user votes cache for ${userId} in jam: ${jamId}`);
     } catch (error) {
       console.error('Error invalidating user votes cache:', error);
     }
