@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/test-redis.js
 
 # next.js
 /.next/
@@ -39,5 +40,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
 /app/generated/prisma
+/test-redis.js
