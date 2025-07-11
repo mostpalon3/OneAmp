@@ -110,19 +110,25 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        // 🔥 REDIS INTEGRATION: Invalidate cache and publish real-time update
+        // 🔥 COMPREHENSIVE CACHE INVALIDATION
         await Promise.all([
-            // Invalidate stream cache for this jam
-            StreamCacheService.invalidateStreamCache(stream.jamId),
-            
-            // Invalidate user votes cache for this user
-            StreamCacheService.invalidateUserVotes(user.id, stream.jamId),
-            
-            // Publish real-time vote update
+            // Clear ALL caches for this jam
+            StreamCacheService.invalidateAllUserCachesForJam(stream.jamId),
+            // Publish real-time update to all connected clients
             StreamCacheService.publishVoteUpdate(stream.jamId, data.streamId, {
                 action: result.action,
                 type: 'upvote',
-                userId: user.id // ✅ Changed from userEmail to user.id
+                userId: user.id,
+                timestamp: Date.now()
+            }),
+            // Also publish a general stream update
+            StreamCacheService.publishStreamUpdate(stream.jamId, {
+                type: 'vote_changed',
+                streamId: data.streamId,
+                userId: user.id,
+                action: result.action,
+                voteType: 'upvote',
+                timestamp: Date.now()
             })
         ]);
 

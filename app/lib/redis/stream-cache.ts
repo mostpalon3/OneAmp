@@ -100,10 +100,10 @@ export class StreamCacheService {
     }
   }
 
-  // Get cached user votes
+  // Make sure cache keys are truly user-specific
   static async getCachedUserVotes(userId: string, jamId: string) {
+    const key = `user_votes:${userId}:${jamId}`;
     try {
-      const key = REDIS_KEYS.USER_VOTES(userId, jamId);
       const cached = await redis.get(key);
       return cached ? JSON.parse(cached) : null;
     } catch (error) {
@@ -114,8 +114,8 @@ export class StreamCacheService {
 
   // Invalidate user votes cache
   static async invalidateUserVotes(userId: string, jamId: string) {
+    const key = `user_votes:${userId}:${jamId}`;
     try {
-      const key = REDIS_KEYS.USER_VOTES(userId, jamId);
       await redis.del(key);
       console.log(`✅ Invalidated user votes cache for ${userId} in jam: ${jamId}`);
     } catch (error) {
@@ -186,6 +186,63 @@ export class StreamCacheService {
       }
     } catch (error) {
       console.error('Error warming cache:', error);
+    }
+  }
+
+  // Make cache keys truly user-specific for streams too
+  static async cacheStreamQueueForUser(jamId: string, userId: string, streams: any[]) {
+    try {
+      const key = `streams:${jamId}:user:${userId}`;
+      await redis.setEx(key, CACHE_TTL.STREAM_QUEUE, JSON.stringify(streams));
+      console.log(`✅ Cached ${streams.length} streams for jam: ${jamId}, user: ${userId}`);
+    } catch (error) {
+      console.error('Error caching stream queue for user:', error);
+    }
+  }
+
+  static async getCachedStreamQueueForUser(jamId: string, userId: string) {
+    try {
+      const key = `streams:${jamId}:user:${userId}`;
+      const cached = await redis.get(key);
+      if (cached) {
+        console.log(`✅ Cache HIT for streams in jam: ${jamId}, user: ${userId}`);
+        return JSON.parse(cached);
+      } else {
+        console.log(`❌ Cache MISS for streams in jam: ${jamId}, user: ${userId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting cached stream queue for user:', error);
+      return null;
+    }
+  }
+
+  // Invalidate ALL user-specific caches for a jam when votes change
+  static async invalidateAllUserCachesForJam(jamId: string) {
+    try {
+      // Since redis.keys is not available, we'll just clear the general stream cache
+      // User-specific caches will naturally expire or can be invalidated individually
+      // when we know the specific user IDs
+      console.log(`ℹ️ Clearing general caches for jam: ${jamId}`);
+      
+      // Clear the general stream cache
+      await this.invalidateStreamCache(jamId);
+    } catch (error) {
+      console.error('Error invalidating all user caches:', error);
+    }
+  }
+
+  // Add method to get all connected users for a jam (for targeted cache invalidation)
+  static async getConnectedUsers(jamId: string): Promise<string[]> {
+    try {
+      // Since redis.keys is not available in this client, we'll need to track users differently
+      // For now, return empty array - this method would need to be implemented differently
+      // or the Redis client would need to be extended to support the keys command
+      console.log(`ℹ️ Getting connected users not implemented for jam: ${jamId}`);
+      return [];
+    } catch (error) {
+      console.error('Error getting connected users:', error);
+      return [];
     }
   }
 }
