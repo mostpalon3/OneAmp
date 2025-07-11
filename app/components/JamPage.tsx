@@ -282,7 +282,7 @@ export default function JamPage({
       <div className="flex-1 md:overflow-hidden">
         <div className="container mx-auto px-4 lg:px-6 py-6 h-full">
           <JamHeader />
-
+          
           <div className="grid lg:grid-cols-3 gap-6 h-[calc(100%-90px)]">
             {/* Main Content Section - 2/3 width with hidden scrollbar */}
             <div className="lg:col-span-2 md:overflow-y-auto scrollbar-hide">
