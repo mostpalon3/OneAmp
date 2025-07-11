@@ -220,9 +220,6 @@ export class StreamCacheService {
   // Invalidate ALL user-specific caches for a jam when votes change
   static async invalidateAllUserCachesForJam(jamId: string) {
     try {
-      // Since redis.keys is not available, we'll just clear the general stream cache
-      // User-specific caches will naturally expire or can be invalidated individually
-      // when we know the specific user IDs
       console.log(`ℹ️ Clearing general caches for jam: ${jamId}`);
       
       // Clear the general stream cache
@@ -235,9 +232,6 @@ export class StreamCacheService {
   // Add method to get all connected users for a jam (for targeted cache invalidation)
   static async getConnectedUsers(jamId: string): Promise<string[]> {
     try {
-      // Since redis.keys is not available in this client, we'll need to track users differently
-      // For now, return empty array - this method would need to be implemented differently
-      // or the Redis client would need to be extended to support the keys command
       console.log(`ℹ️ Getting connected users not implemented for jam: ${jamId}`);
       return [];
     } catch (error) {
