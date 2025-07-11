@@ -129,11 +129,11 @@ export function JamsList({ jams, onEnterJam, onDeleteJam, onCreateNewJam, getGen
               {/* Stats section */}
               <div className="p-6 pt-0">
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  {/* <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <FaUsers className="w-4 h-4" />
                     <span className="font-medium">{jam.viewers}</span>
                     <span>viewers</span>
-                  </div>
+                  </div> */}
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <FaClock className="w-4 h-4" />
                     <span className="font-medium">{jam.duration}</span>

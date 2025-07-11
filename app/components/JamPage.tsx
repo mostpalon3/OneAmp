@@ -185,6 +185,10 @@ export default function JamPage({
     console.log(`🗳️ Voting ${isUpvote ? 'UP' : 'DOWN'} on song ${songId}`);
 
     try {
+      // Make the vote API call
+      await voteOnStream(String(songId), isUpvote);
+      
+      console.log('✅ Vote submitted successfully');
       // Optimistic update for immediate feedback
       setQueue((prevQueue) =>
         prevQueue.map((song) => {
@@ -208,16 +212,11 @@ export default function JamPage({
           return song;
         })
       );
-
-      // Make the vote API call
-      await voteOnStream(String(songId), isUpvote);
-      
-      console.log('✅ Vote submitted successfully');
       
       // Force refresh after successful vote to ensure consistency
       setTimeout(() => {
         fetchInitialStreams();
-      }, 500);
+      }, 1000);
       
     } catch (error) {
       console.error('❌ Error voting:', error);

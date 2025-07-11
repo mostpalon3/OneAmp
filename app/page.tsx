@@ -158,42 +158,42 @@ export default function LandingPage() {
               </section>
 
               {/* How It Works Section */}
-              <section id="how-it-works" className="py-20 bg-gray-50">
+              <section id="how-it-works" className="py-20 bg-black">
                 <div className="container mx-auto px-4 lg:px-6">
                   <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">How OneAmp Works</h2>
-                    <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">How OneAmp Works</h2>
+                    <p className="text-xl text-gray-300 max-w-2xl mx-auto">
                       Get started in minutes and transform how you stream music with your audience.
                     </p>
                   </div>
 
                   <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
-                        <span className="text-white font-bold text-xl">1</span>
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="text-black font-bold text-xl">1</span>
                       </div>
                       <h3 className="text-xl font-semibold text-black mb-3">Connect Your Accounts</h3>
-                      <p className="text-gray-600">
+                      <p className="text-gray-100">
                         Link your Spotify and YouTube accounts to access your music libraries and playlists.
                       </p>
                     </div>
 
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
-                        <span className="text-white font-bold text-xl">2</span>
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="text-black font-bold text-xl">2</span>
                       </div>
                       <h3 className="text-xl font-semibold text-black mb-3">Start Your Stream</h3>
-                      <p className="text-gray-600">
+                      <p className="text-gray-100">
                         Begin streaming from your device and share your stream link with your audience.
                       </p>
                     </div>
 
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
-                        <span className="text-white font-bold text-xl">3</span>
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="text-black font-bold text-xl">3</span>
                       </div>
                       <h3 className="text-xl font-semibold text-black mb-3">Let Audience Vote</h3>
-                      <p className="text-gray-600">
+                      <p className="text-gray-100">
                         Your viewers can vote on songs, add requests, and shape the music queue in real-time.
                       </p>
                     </div>
@@ -202,7 +202,7 @@ export default function LandingPage() {
               </section>
 
               {/* Stats Section */}
-              <section className="py-20 bg-black text-white">
+              {/* <section className="py-20 bg-black text-white">
                 <div className="container mx-auto px-4 lg:px-6">
                   <div className="grid md:grid-cols-4 gap-8 text-center">
                     <div>
@@ -223,10 +223,10 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
-              </section>
+              </section> */}
 
               {/* CTA Section */}
-              <section className="py-20 bg-white">
+              {/* <section className="py-20 bg-white">
                 <div className="container mx-auto px-4 lg:px-6">
                   <div className="max-w-3xl mx-auto text-center">
                     <h2 className="text-3xl md:text-4xl font-bold text-black mb-6">Ready to revolutionize your streams?</h2>
@@ -251,7 +251,7 @@ export default function LandingPage() {
                     </p>
                   </div>
                 </div>
-              </section>
+              </section> */}
           </main>
       <Footer/>
       </div>

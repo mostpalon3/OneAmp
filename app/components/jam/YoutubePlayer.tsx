@@ -252,10 +252,10 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
         <img
           src={currentVideo.thumbnail || "/images/not.png"}
           alt={currentVideo.title}
-          className="w-20 h-15 md:w-auto md:h-20 rounded-lg object-cover"
+          className="w-15 h-12 md:w-auto md:h-20 rounded-lg object-cover"
         />
         <div className="flex-1">
-          <h3 className="text-sm md:text-xl font-semibold text-black mb-1">{currentVideo.title}</h3>
+          <h3 className="text-xs md:text-xl font-semibold text-black mb-1">{currentVideo.title}</h3>
           <p className="text-gray-600 mb-2 md:text-auto text-xs">{currentVideo.artist}</p>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
@@ -269,10 +269,10 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[0.6rem] md:text-sm text-gray-500 mb-1">
+          <div className="text-[0.5rem] md:text-sm text-gray-500 mb-1">
             {formatTime(currentTime)} / {formatDuration(currentVideo.duration)}
           </div>
-          <div className="w-18 md:w-24 h-1 bg-gray-200 rounded-full">
+          <div className="w-14 md:w-24 h-1 bg-gray-200 rounded-full">
             <div 
               className="h-1 bg-slate-500 rounded-full transition-all duration-1000"
               style={{ width: `${getProgressPercentage()}%` }}

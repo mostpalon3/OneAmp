@@ -47,7 +47,7 @@ export function UserProfile({ user, jamCount, onFollowUser, onShareProfile }: Us
                 <p className="text-gray-600">{user.username}</p>
               </div>
               <div className="flex items-center space-x-3">
-                <Button
+                {/* <Button
                   onClick={onFollowUser}
                   variant={user.isFollowing ? "outline" : "default"}
                   className={
@@ -58,28 +58,28 @@ export function UserProfile({ user, jamCount, onFollowUser, onShareProfile }: Us
                 >
                   <FaUserPlus className="w-4 h-4 mr-2" />
                   {user.isFollowing ? "Following" : "Follow"}
-                </Button>
-                <Button
+                </Button> */}
+                {/* <Button
                   variant="outline"
                   onClick={onShareProfile}
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   <FaShare className="w-4 h-4" />
-                </Button>
+                </Button> */}
               </div>
             </div>
 
             <p className="text-gray-700 mb-4">{user.bio}</p>
 
             <div className="flex items-center space-x-6 text-sm">
-              <div className="flex items-center space-x-1">
+              {/* <div className="flex items-center space-x-1">
                 <span className="font-semibold text-black">{user.followers.toLocaleString()}</span>
                 <span className="text-gray-600">followers</span>
               </div>
               <div className="flex items-center space-x-1">
                 <span className="font-semibold text-black">{user.following.toLocaleString()}</span>
                 <span className="text-gray-600">following</span>
-              </div>
+              </div> */}
               <div className="flex items-center space-x-1">
                 <span className="font-semibold text-black">{jamCount}</span>
                 <span className="text-gray-600">jams</span>

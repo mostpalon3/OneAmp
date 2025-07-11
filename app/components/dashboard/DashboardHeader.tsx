@@ -51,7 +51,7 @@ export function DashboardHeader({
         {/* Logo */}
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold">O</span>
+            <BiMusic className="w-4 h-4 md:w-5 md:h-5 text-white" />
           </div>
           <span className="text-xl font-bold text-black">OneAmp</span>
         </div>
