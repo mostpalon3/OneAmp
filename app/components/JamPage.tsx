@@ -147,81 +147,45 @@ export default function JamPage({
     return () => clearInterval(interval);
   }, [jamId]);
 
-  // Subscribe to real-time vote updates with more aggressive refresh
-  useEffect(() => {
-    const eventSource = new EventSource(`/api/streams/subscribe/${jamId}`);
-    
-    eventSource.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            console.log('📡 Real-time update received:', data);
-            
-            if (data.type === 'vote_update' || data.type === 'vote_changed') {
-                console.log('🔄 Refreshing streams due to vote update');
-                // Immediate refresh when vote changes
-                fetchInitialStreams();
-            }
-        } catch (error) {
-            console.error('Error parsing real-time update:', error);
-        }
-    };
-
-    eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
-    };
-
-    return () => {
-        console.log('🔌 Closing EventSource connection');
-        eventSource.close();
-    };
-  }, [jamId, fetchInitialStreams]);
-
   const handleVote = async (songId: number | string, isUpvote: boolean) => {
     if (!songId) {
       console.error('handleVote called with undefined songId');
       return;
     }
 
-    console.log(`🗳️ Voting ${isUpvote ? 'UP' : 'DOWN'} on song ${songId}`);
-
     try {
-      // Make the vote API call
       await voteOnStream(String(songId), isUpvote);
-      
-      console.log('✅ Vote submitted successfully');
-      // Optimistic update for immediate feedback
       setQueue((prevQueue) =>
-        prevQueue.map((song) => {
-          if (song.id === songId) {
-            let newVotes = song.votes;
-            let newUserVoted = song.userVoted;
+        prevQueue
+          .map((song) => {
+            if (song.id === songId) {
+              let newVotes = song.votes;
+              let newUserVoted = song.userVoted;
 
-            if (song.userVoted === (isUpvote ? "up" : "down")) {
-              newVotes = isUpvote ? newVotes - 1 : newVotes + 1;
-              newUserVoted = null;
-            } else if (song.userVoted === null) {
-              newVotes = isUpvote ? newVotes + 1 : newVotes - 1;
-              newUserVoted = isUpvote ? "up" : "down";
-            } else {
-              newVotes = isUpvote ? newVotes + 2 : newVotes - 2;
-              newUserVoted = isUpvote ? "up" : "down";
+              if (song.userVoted === (isUpvote ? "up" : "down")) {
+                newVotes = isUpvote ? newVotes - 1 : newVotes + 1;
+                newUserVoted = null;
+              } else if (song.userVoted === null) {
+                newVotes = isUpvote ? newVotes + 1 : newVotes - 1;
+                newUserVoted = isUpvote ? "up" : "down";
+              } else {
+                newVotes = isUpvote ? newVotes + 2 : newVotes - 2;
+                newUserVoted = isUpvote ? "up" : "down";
+              }
+
+              return { ...song, votes: newVotes, userVoted: newUserVoted };
             }
-
-            return { ...song, votes: newVotes, userVoted: newUserVoted };
-          }
-          return song;
-        })
+            return song;
+          })
+          .sort((a, b) => {
+            if (b.votes !== a.votes) {
+              return b.votes - a.votes;
+            }
+            return String(a.id).localeCompare(String(b.id));
+          })
       );
-      
-      // Force refresh after successful vote to ensure consistency
-      setTimeout(() => {
-        fetchInitialStreams();
-      }, 1000);
-      
     } catch (error) {
-      console.error('❌ Error voting:', error);
-      // Revert optimistic update on error
-      fetchInitialStreams();
+      console.error('Error voting:', error);
     }
   };
 

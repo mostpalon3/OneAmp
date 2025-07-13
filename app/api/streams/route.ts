@@ -233,6 +233,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  //see here we are extracting jamId from the request URL, but in other cases where we used params , that were from the request api url 
   const { searchParams } = new URL(req.url);
   const jamId = String(searchParams.get('jamId'));
   const session = await getServerSession();
@@ -245,24 +246,25 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Get user first
-    const user = await prismaClient.user.findUnique({
-      where: { email: session?.user.email || devMail }, 
-      select: { id: true }
-    });
-
-    if (!user) {
+    // Try to get from cache first
+    const cachedStreams = await StreamCacheService.getCachedStreamQueue(jamId);
+    const cachedActiveStream = await StreamCacheService.getCachedActiveStream(jamId);
+    
+    if (cachedStreams && cachedActiveStream !== undefined) {
       return NextResponse.json({
-        message: "User not found"
-      }, { status: 404 });
+        streams: cachedStreams,
+        activeStream: cachedActiveStream
+      });
     }
 
-    // 🔥 TEMPORARY FIX: DISABLE ALL CACHING FOR VOTES
-    // Force fresh data from database every time
-    console.log(`🔍 Force fetching fresh data for user ${user.id} in jam ${jamId}`);
-
-    // Fetch from database
-    const [streamsData, activeStreamData] = await Promise.all([
+    // If not in cache, fetch from database
+    const [user, streamsData, activeStreamData] = await Promise.all([
+      prismaClient.user.findUnique({
+        where: { email: session?.user.email || devMail }, 
+        select: { id: true } // Only select what we need
+      }),
+      
+      // Optimized streams query with selective includes
       prismaClient.stream.findMany({
         where: {
           jamId: jamId,
@@ -291,6 +293,7 @@ export async function GET(req: NextRequest) {
         }
       }),
       
+      // Optimized active stream query
       prismaClient.currentStream.findUnique({
         where: { jamId: jamId },
         select: {
@@ -317,59 +320,67 @@ export async function GET(req: NextRequest) {
       })
     ]);
 
-    // ALWAYS fetch user votes fresh from database
-    const streamIds = streamsData.map(s => s.id);
-    const activeStreamId = activeStreamData?.stream?.id;
-    
-    const allStreamIds = activeStreamId 
-      ? [...streamIds, activeStreamId]
-      : streamIds;
+    if (!user) {
+      return NextResponse.json({
+        message: "User not found"
+      }, { status: 404 });
+    }
 
-    console.log(`📊 Checking votes for user ${user.id} across ${allStreamIds.length} streams`);
-
-    const userVotes = allStreamIds.length > 0 ? await prismaClient.$transaction([
-      prismaClient.upvote.findMany({
-        where: {
-          userId: user.id,
-          streamId: { in: allStreamIds }
-        },
-        select: { streamId: true }
-      }),
-      prismaClient.downvote.findMany({
-        where: {
-          userId: user.id,
-          streamId: { in: allStreamIds }
-        },
-        select: { streamId: true }
-      })
-    ]) : [[], []];
-
-    const [upvotes, downvotes] = userVotes;
+    // 🔥 ADD: Try to get cached user votes first
+    const cachedUserVotes = await StreamCacheService.getCachedUserVotes(user.id, jamId);
     
-    const upvoteStreamIds = upvotes.map(v => v.streamId);
-    const downvoteStreamIds = downvotes.map(v => v.streamId);
+    let upvoteMap: Set<string>, downvoteMap: Set<string>;
     
-    console.log(`👍 User ${user.id} upvotes:`, upvoteStreamIds);
-    console.log(`👎 User ${user.id} downvotes:`, downvoteStreamIds);
-    
-    const upvoteMap = new Set(upvoteStreamIds);
-    const downvoteMap = new Set(downvoteStreamIds);
-
-    // Transform data with user-specific vote information
-    const streamsWithVotes = streamsData.map(stream => {
-      const votes = stream._count.upvotes - stream._count.downvotes;
-      const userVoted = upvoteMap.has(stream.id) ? "up" : 
-                       downvoteMap.has(stream.id) ? "down" : null;
+    if (cachedUserVotes) {
+      console.log(`✅ Cache HIT for user votes in jam: ${jamId}`);
+      upvoteMap = new Set(cachedUserVotes.upvotes);
+      downvoteMap = new Set(cachedUserVotes.downvotes);
+    } else {
+      console.log(`❌ Cache MISS for user votes in jam: ${jamId}`);
+      // Get user votes in a separate optimized query only if needed
+      const streamIds = streamsData.map(s => s.id);
+      const activeStreamId = activeStreamData?.stream?.id;
       
-      console.log(`🎵 Stream ${stream.id}: votes=${votes}, userVoted=${userVoted}`);
-      
-      return {
-        ...stream,
-        votes,
-        userVoted,
-        platform: stream.type?.toLowerCase() || "youtube"
-      };
-    });
+      const allStreamIds = activeStreamId 
+        ? [...streamIds, activeStreamId]
+        : streamIds;
+
+      const userVotes = allStreamIds.length > 0 ? await prismaClient.$transaction([
+        prismaClient.upvote.findMany({
+          where: {
+            userId: user.id,
+            streamId: { in: allStreamIds }
+          },
+          select: { streamId: true }
+        }),
+        prismaClient.downvote.findMany({
+          where: {
+            userId: user.id,
+            streamId: { in: allStreamIds }
+          },
+          select: { streamId: true }
+        })
+      ]) : [[], []];
+
+      const [upvotes, downvotes] = userVotes;
+      upvoteMap = new Set(upvotes.map(v => v.streamId));
+      downvoteMap = new Set(downvotes.map(v => v.streamId));
+
+      // 🔥 ADD: Cache the user votes
+      await StreamCacheService.cacheUserVotes(user.id, jamId, {
+        upvotes: upvotes.map(v => v.streamId),
+        downvotes: downvotes.map(v => v.streamId)
+      });
+    }
+
+    // Transform data efficiently
+    const streamsWithVotes = streamsData.map(stream => ({
+      ...stream,
+      votes: stream._count.upvotes - stream._count.downvotes,
+      userVoted: upvoteMap.has(stream.id) ? "up" : 
+                 downvoteMap.has(stream.id) ? "down" : null,
+      platform: stream.type?.toLowerCase() || "youtube"
+    }));
 
     const activeStreamWithVotes = activeStreamData?.stream ? {
       ...activeStreamData.stream,
@@ -379,7 +390,10 @@ export async function GET(req: NextRequest) {
       platform: activeStreamData.stream.type?.toLowerCase() || "youtube"
     } : null;
 
-    // 🔥 NO CACHING - Return fresh data every time
+    // Cache the results
+    await StreamCacheService.cacheStreamQueue(jamId, streamsWithVotes);
+    await StreamCacheService.cacheActiveStream(jamId, activeStreamWithVotes);
+
     return NextResponse.json({
       streams: streamsWithVotes,
       activeStream: activeStreamWithVotes
