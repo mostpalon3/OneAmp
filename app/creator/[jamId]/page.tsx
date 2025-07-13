@@ -32,10 +32,17 @@ export default function CreatorPage() {
     
       if (!session?.user?.id) {
         return (
-          <div className="flex items-center justify-center min-h-screen">
-            Please sign in to access this Jam
+          <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <div>Please sign in to access this Jam</div>
+        <button 
+          onClick={() => router.push("/")} 
+          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+        >
+          Go Home
+        </button>
           </div>
         );
       }
+    
     return <JamPage jamId={jamId} playVideo={false}/>
 }

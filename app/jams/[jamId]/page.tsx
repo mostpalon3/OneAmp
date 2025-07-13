@@ -36,7 +36,7 @@ export default function Dashboard() {
       <p>Please sign in to access dashboard</p>
       <button 
         onClick={() => signOut({ callbackUrl: '/' })}
-        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
       >
         Sign Out
       </button>
