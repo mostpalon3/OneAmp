@@ -42,8 +42,8 @@ export function JamHeader() {
       <div className="flex items-center space-x-4 mb-2">
         <div className="w-12 h-12 bg-gradient-to-br from-black to-gray-500 rounded-full flex items-center justify-center">
           <span className="text-white font-bold text-lg">
-            {jamDetails?.title?.[0]?.toUpperCase() || "J"}
-            {jamDetails?.title?.split(" ")?.[1]?.[0]?.toUpperCase() || "M"}
+            {jamDetails?.title?.[0]?.toUpperCase() || "DJ"}
+            {jamDetails?.title?.split(" ")?.[1]?.[0]?.toUpperCase() || ""}
           </span>
         </div>
         <div>
