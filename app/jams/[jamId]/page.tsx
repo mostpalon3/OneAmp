@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import JamPage from "../../components/JamPage";
@@ -32,8 +32,14 @@ export default function Dashboard() {
 
   if (!session?.user?.id) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        Please sign in to access dashboard
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+      <p>Please sign in to access dashboard</p>
+      <button 
+        onClick={() => signOut({ callbackUrl: '/' })}
+        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+      >
+        Sign Out
+      </button>
       </div>
     );
   }
