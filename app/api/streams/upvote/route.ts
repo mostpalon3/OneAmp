@@ -2,7 +2,7 @@ import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { StreamCacheService } from '@/app/lib/redis/stream-cache';
+import { VoteSyncService } from '@/app/lib/redis/vote-sync';
 
 const UpvoteSchema = z.object({
     streamId: z.string(),
@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await prismaClient.$transaction(async (tx) => {
-            // user is already fetched above
-
+            console.log(`🔍 Processing upvote for stream ${data.streamId} by user ${user.id}`);
+            
             // Check existing votes in parallel
             const [existingUpvote, existingDownvote] = await Promise.all([
                 tx.upvote.findUnique({
@@ -77,13 +77,13 @@ export async function POST(req: NextRequest) {
                             streamId: data.streamId
                         }
                     }
-                });
+                });            
                 return { action: "removed", message: "Upvote removed successfully" };
             } else {
                 // Remove downvote if exists and add upvote
                 const operations = [];
                 
-                if (existingDownvote) {
+                if (existingDownvote) {                    
                     operations.push(
                         tx.downvote.delete({
                             where: {
@@ -94,8 +94,7 @@ export async function POST(req: NextRequest) {
                             }
                         })
                     );
-                }
-                
+                }                                
                 operations.push(
                     tx.upvote.create({
                         data: {
@@ -110,21 +109,29 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        // 🔥 REDIS INTEGRATION: Invalidate cache and publish real-time update
-        await Promise.all([
-            // Invalidate stream cache for this jam
-            StreamCacheService.invalidateStreamCache(stream.jamId),
-            
-            // Invalidate user votes cache for this user
-            StreamCacheService.invalidateUserVotes(user.id, stream.jamId),
-            
-            // Publish real-time vote update
-            StreamCacheService.publishVoteUpdate(stream.jamId, data.streamId, {
-                action: result.action,
-                type: 'upvote',
-                userId: user.id // ✅ Changed from userEmail to user.id
-            })
-        ]);
+        // 🔥 Get updated vote counts for verification
+        const updatedCounts = await prismaClient.stream.findUnique({
+            where: { id: data.streamId },
+            select: {
+                _count: {
+                    select: {
+                        upvotes: true,
+                        downvotes: true
+                    }
+                }
+            }
+        });
+
+        const totalVotes = (updatedCounts?._count.upvotes || 0) - (updatedCounts?._count.downvotes || 0);        
+
+        // 🔥 VOTE SYNC: Use new vote synchronization service
+        await VoteSyncService.forceVoteSync(stream.jamId, data.streamId, user.id, {
+            type: result.action === "added" ? "upvote" : "remove_upvote",
+            action: result.action,
+            userId: user.id,
+            timestamp: Date.now(),
+            newVoteCount: totalVotes
+        });
 
         return NextResponse.json(result, { 
             status: result.action === "added" ? 201 : 200 

@@ -152,6 +152,22 @@ export const redis = {
     }
   },
 
+  async keys(pattern: string) {
+    try {
+      if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+        return []; // Return empty array if Redis unavailable
+      }
+      
+      await ensureConnection();
+      if (!redisClient.isOpen) return [];
+      
+      return await redisClient.keys(pattern);
+    } catch (error) {
+      console.error('Redis KEYS error:', error);
+      return [];
+    }
+  },
+
   async publish(channel: string, message: string) {
     try {
       if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {

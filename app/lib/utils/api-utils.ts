@@ -27,15 +27,14 @@ export async function refreshStreams(jamId: string) {
   try {
     const res = await fetch("/api/streams/?jamId=" + jamId);
     
-    if (!res.ok) {
-      console.warn("Failed to fetch streams:", res.status);
+    if (!res.ok) {      
       return null;
     }
     
     const data = await res.json();
     return data;
   } catch (error) {
-    console.error("Error refreshing streams:", error);
+    console.error("❌ Error refreshing streams:", error);
     return null;
   }
 }
@@ -61,6 +60,8 @@ export async function submitStream(jamId: string,url: string) {
 }
 
 export async function voteOnStream(streamId: string, isUpvote: boolean) {
+  console.log(`🗳️ Calling vote API: ${isUpvote ? 'upvote' : 'downvote'} for stream ${streamId}`);
+  
   const response = await fetch(`/api/streams/${isUpvote ? "upvote" : "downvote"}`, {
     method: 'POST',
     headers: {
@@ -75,7 +76,8 @@ export async function voteOnStream(streamId: string, isUpvote: boolean) {
     throw new Error('Vote failed');
   }
 
-  return response.json();
+  const result = await response.json();
+  return result;
 }
 
 export async function fetchJamHeaderDetails(jamId: string) {

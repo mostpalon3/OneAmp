@@ -2,7 +2,7 @@ import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { StreamCacheService } from '@/app/lib/redis/stream-cache';
+import { VoteSyncService } from '@/app/lib/redis/vote-sync';
 
 const DownvoteSchema = z.object({
     streamId: z.string(),
@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await prismaClient.$transaction(async (tx) => {
-            // 🔥 REMOVED: User lookup from transaction (already done above)
             
             // Check existing votes in parallel
             const [existingUpvote, existingDownvote] = await Promise.all([
@@ -94,8 +93,7 @@ export async function POST(req: NextRequest) {
                             }
                         })
                     );
-                }
-                
+                }                            
                 operations.push(
                     tx.downvote.create({
                         data: {
@@ -110,16 +108,29 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        // 🔥 FIXED: Use user.id instead of userEmail
-        await Promise.all([
-            StreamCacheService.invalidateStreamCache(stream.jamId),
-            StreamCacheService.invalidateUserVotes(user.id, stream.jamId), // ✅ Fixed
-            StreamCacheService.publishVoteUpdate(stream.jamId, data.streamId, {
-                action: result.action,
-                type: 'downvote',
-                userId: user.id // ✅ Also use user.id here for consistency
-            })
-        ]);
+        // 🔥 Get updated vote counts for verification
+        const updatedCounts = await prismaClient.stream.findUnique({
+            where: { id: data.streamId },
+            select: {
+                _count: {
+                    select: {
+                        upvotes: true,
+                        downvotes: true
+                    }
+                }
+            }
+        });
+
+        const totalVotes = (updatedCounts?._count.upvotes || 0) - (updatedCounts?._count.downvotes || 0);        
+
+        // 🔥 VOTE SYNC: Use new vote synchronization service
+        await VoteSyncService.forceVoteSync(stream.jamId, data.streamId, user.id, {
+            type: result.action === "added" ? "downvote" : "remove_downvote",
+            action: result.action,
+            userId: user.id,
+            timestamp: Date.now(),
+            newVoteCount: totalVotes
+        });
 
         return NextResponse.json(result, { 
             status: result.action === "added" ? 201 : 200 

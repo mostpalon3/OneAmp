@@ -123,6 +123,46 @@ export class StreamCacheService {
     }
   }
 
+  // 🔥 NEW: Invalidate ALL user votes caches for a jam (when votes change)
+  static async invalidateAllUserVotesForJam(jamId: string) {
+    try {
+      // Use Redis pattern matching to find all user vote keys for this jam
+      const pattern = `user_votes:*:${jamId}`;
+      const keys = await redis.keys(pattern);
+      
+      if (keys.length > 0) {
+        await Promise.all(keys.map((key: string) => redis.del(key)));
+        console.log(`✅ Invalidated ${keys.length} user vote caches for jam: ${jamId}`);
+      }
+    } catch (error) {
+      console.error('Error invalidating all user votes cache:', error);
+    }
+  }
+
+  // 🔥 NEW: Force refresh cache immediately after vote
+  static async forceRefreshStreamCache(jamId: string) {
+    try {
+      // Delete all related cache entries immediately
+      const keys = [
+        REDIS_KEYS.STREAM_QUEUE(jamId),
+        REDIS_KEYS.ACTIVE_STREAM(jamId),
+      ];
+      
+      // Also delete all user vote caches for this jam
+      const pattern = `user_votes:*:${jamId}`;
+      const userVoteKeys = await redis.keys(pattern);
+      
+      const allKeys = [...keys, ...userVoteKeys];
+      
+      if (allKeys.length > 0) {
+        await Promise.all(allKeys.map((key: string) => redis.del(key)));
+        console.log(`✅ Force refreshed cache for jam: ${jamId} (${allKeys.length} keys deleted)`);
+      }
+    } catch (error) {
+      console.error('Error force refreshing cache:', error);
+    }
+  }
+
   // Invalidate cache when data changes
   static async invalidateStreamCache(jamId: string) {
     try {

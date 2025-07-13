@@ -26,10 +26,10 @@ export const REDIS_KEYS = {
 };
 
 export const CACHE_TTL = {
-  STREAM_QUEUE: 60, // 60 seconds
-  ACTIVE_STREAM: 60, // 60 seconds
-  VOTE_COUNTS: 10, // 10 seconds
-  USER_VOTES: 30, // 30 seconds
+  STREAM_QUEUE: 10, // 10 seconds (reduced from 60 for faster vote updates)
+  ACTIVE_STREAM: 10, // 10 seconds (reduced from 60 for faster vote updates)
+  VOTE_COUNTS: 5, // 5 seconds (reduced from 10 for faster vote updates)
+  USER_VOTES: 10, // 10 seconds (reduced from 30 for faster vote updates)
   VIDEO_PREVIEW: 86400, // 24 hours (video metadata rarely changes)
 
   // 🔥 NEW: Dashboard cache TTLs

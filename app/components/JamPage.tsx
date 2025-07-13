@@ -47,10 +47,10 @@ export default function JamPage({
       setIsUserActive(true);
       clearTimeout(activityTimer);
       
-      // Consider user inactive after 30 seconds of no activity
+      // Consider user inactive after 15 seconds (reduced from 30)
       activityTimer = setTimeout(() => {
         setIsUserActive(false);
-      }, 30000);
+      }, 15000);
     };
 
     // Listen for user activity
@@ -69,33 +69,45 @@ export default function JamPage({
     };
   }, []);
 
-  // Adjust polling based on user activity
+  // Adjust polling based on user activity - faster polling for better vote sync
   useEffect(() => {
     if (isUserActive) {
-      setPollingInterval(1500); // Fast polling for active users
-      console.log("User is active, polling at 1500ms interval");
+      setPollingInterval(500); // Very aggressive polling for active users (reduced from 1000)
+      console.log("User is active, polling at 500ms interval");
     } else {
       console.log("User is inactive, slowing down polling");
-      setPollingInterval(10000); // Slower polling for inactive users
+      setPollingInterval(2000); // Faster polling even for inactive users (reduced from 5000)
     }
   }, [isUserActive]);
 
 
-  const fetchInitialStreams = useCallback(async () => {
+  const fetchInitialStreams = useCallback(async () => {    
     const streams = await refreshStreams(jamId);
-    if (streams) {
-      const transformedStreams = streams.streams.map((stream: any) => ({
-        id: stream.id,
-        title: stream.title || "Unknown Title",
-        artist: stream.artist || "Unknown Artist", 
-        duration: stream.duration || "0:00",
-        platform: stream.type.toLowerCase(),
-        videoId: stream.extractedId,
-        thumbnail: stream.smallImg,
-        votes: stream.votes || ((stream._count?.upvotes || 0) - (stream._count?.downvotes || 0)),
-        userVoted: stream.userVoted || null,
-        submittedBy: stream.submittedBy,
-      }));
+    if (streams) {      
+      const transformedStreams = streams.streams.map((stream: any) => {
+        const transformed = {
+          id: stream.id,
+          title: stream.title || "Unknown Title",
+          artist: stream.artist || "Unknown Artist", 
+          duration: stream.duration || "0:00",
+          platform: stream.type.toLowerCase(),
+          videoId: stream.extractedId,
+          thumbnail: stream.smallImg,
+          votes: stream.votes || ((stream._count?.upvotes || 0) - (stream._count?.downvotes || 0)),
+          userVoted: stream.userVoted || null,
+          submittedBy: stream.submittedBy,
+        };
+        
+        console.log(`🎵 Stream ${stream.id}: votes=${transformed.votes}, userVoted=${transformed.userVoted}, title="${transformed.title}"`);
+        return transformed;
+      });
+      
+      console.log(`🎵 All transformed streams for user ${streams.userId}:`, transformedStreams.map((s: { id: any; title: any; votes: any; userVoted: any }) => ({
+        id: s.id,
+        title: s.title,
+        votes: s.votes,
+        userVoted: s.userVoted
+      })));
       
       const sortedStreams = transformedStreams.sort((a: any, b: any) => {
         if (b.votes !== a.votes) {
@@ -152,40 +164,28 @@ export default function JamPage({
       console.error('handleVote called with undefined songId');
       return;
     }
+    
 
     try {
-      await voteOnStream(String(songId), isUpvote);
-      setQueue((prevQueue) =>
-        prevQueue
-          .map((song) => {
-            if (song.id === songId) {
-              let newVotes = song.votes;
-              let newUserVoted = song.userVoted;
-
-              if (song.userVoted === (isUpvote ? "up" : "down")) {
-                newVotes = isUpvote ? newVotes - 1 : newVotes + 1;
-                newUserVoted = null;
-              } else if (song.userVoted === null) {
-                newVotes = isUpvote ? newVotes + 1 : newVotes - 1;
-                newUserVoted = isUpvote ? "up" : "down";
-              } else {
-                newVotes = isUpvote ? newVotes + 2 : newVotes - 2;
-                newUserVoted = isUpvote ? "up" : "down";
-              }
-
-              return { ...song, votes: newVotes, userVoted: newUserVoted };
-            }
-            return song;
-          })
-          .sort((a, b) => {
-            if (b.votes !== a.votes) {
-              return b.votes - a.votes;
-            }
-            return String(a.id).localeCompare(String(b.id));
-          })
-      );
+      // Make the API call first
+      const voteResponse = await voteOnStream(String(songId), isUpvote);
+      console.log(`✅ Vote API response:`, voteResponse);
+      
+      // Immediately refresh streams multiple times to ensure we get the latest state
+      const refreshPromise = async () => {
+        for (let i = 0; i < 3; i++) {
+          await new Promise(resolve => setTimeout(resolve, 100 * (i + 1))); // 100ms, 200ms, 300ms delays
+          console.log(`🔄 Refresh attempt ${i + 1}/3 after vote`);
+          await fetchInitialStreams();
+        }
+      };
+      
+      refreshPromise();
+      
     } catch (error) {
-      console.error('Error voting:', error);
+      console.error('❌ Error voting:', error);
+      // If vote fails, also refresh to ensure UI matches server state
+      fetchInitialStreams();
     }
   };
 
