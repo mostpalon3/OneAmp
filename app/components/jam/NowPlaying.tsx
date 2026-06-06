@@ -10,9 +10,11 @@ interface NowPlayingProps {
   currentVideo: CurrentVideo
   onVideoEnd?: () => void
   onTimeUpdate?: (currentTime: number) => void
+  isCreator?: boolean
+  startAt?: number | null
 }
 
-export function NowPlaying({ currentVideo, onVideoEnd, onTimeUpdate }: NowPlayingProps) {
+export function NowPlaying({ currentVideo, onVideoEnd, onTimeUpdate, isCreator = false, startAt = null }: NowPlayingProps) {
   return (
     <Card className="border-gray-200">
       <CardHeader className="pb-4">
@@ -36,6 +38,8 @@ export function NowPlaying({ currentVideo, onVideoEnd, onTimeUpdate }: NowPlayin
           onToggle={() => {}}
           onVideoEnd={onVideoEnd}
           onTimeUpdate={onTimeUpdate}
+          showControls={isCreator}
+          startAt={startAt}
         />
       </CardContent>
     </Card>

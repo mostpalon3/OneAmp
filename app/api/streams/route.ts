@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/lib/auth"
 import { StreamCacheService } from '@/app/lib/redis/stream-cache';
 import { DashboardCacheService } from '@/app/lib/redis/dashboard-cache'; // 🔥 ADD
+import { emitToJam } from '@/app/lib/socket';
 
 // import { getServerSession } from "next-auth";
 // import { GET as handler } from "@/app/api/auth/[...nextauth]/route";
@@ -220,6 +221,67 @@ export async function POST(req: NextRequest) {
       jam?.userId ? DashboardCacheService.invalidateUserJamsList(jam.userId) : Promise.resolve(),
       jam?.userId ? DashboardCacheService.invalidateUserDashboard(jam.userId) : Promise.resolve(),
     ]);
+
+    // 🔌 SOCKET.IO: Notify all jam participants about the new stream
+    emitToJam(data.jamId, "stream-added", {
+      stream: {
+        id: stream.id,
+        title: stream.title,
+        artist: stream.artist,
+        duration: stream.duration,
+        smallImg: stream.smallImg,
+        bigImg: stream.bigImg,
+        extractedId: stream.extractedId,
+        type: stream.type,
+        submittedBy: stream.submittedBy,
+        createdAt: stream.createdAt,
+        votes: 0,
+        userVoted: null,
+      },
+      jamId: data.jamId,
+    });
+
+    // 🎵 AUTO-PLAY: If no song is currently playing, set this as the active stream
+    const existingCurrentStream = await prismaClient.currentStream.findUnique({
+      where: { jamId: data.jamId },
+    });
+
+    if (!existingCurrentStream || !existingCurrentStream.streamId) {
+      await prismaClient.currentStream.upsert({
+        where: { jamId: data.jamId },
+        update: { streamId: stream.id },
+        create: { jamId: data.jamId, streamId: stream.id },
+      });
+
+      // Mark as played so it doesn't appear in queue
+      await prismaClient.stream.update({
+        where: { id: stream.id },
+        data: { played: true },
+      });
+
+      // Invalidate cache again after auto-play
+      await StreamCacheService.invalidateStreamCache(data.jamId);
+
+      // Emit now-playing-changed so all clients start playing
+      emitToJam(data.jamId, "now-playing-changed", {
+        newActiveStream: {
+          id: stream.id,
+          title: stream.title,
+          artist: stream.artist,
+          duration: stream.duration,
+          smallImg: stream.smallImg,
+          bigImg: stream.bigImg,
+          extractedId: stream.extractedId,
+          type: stream.type,
+          submittedBy: stream.submittedBy,
+          votes: 0,
+        },
+        removedStreamId: stream.id,
+        queueEmpty: false,
+      });
+
+      console.log(`🎵 Auto-playing first song: "${stream.title}" in jam ${data.jamId}`);
+    }
 
     return NextResponse.json({
       message: "Stream added successfully",

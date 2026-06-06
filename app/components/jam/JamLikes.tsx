@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FaHeart } from "react-icons/fa"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react";
+import { useSocket } from "@/app/lib/hooks/useSocket";
 
 interface likeStats {
     jamId: string;
@@ -20,6 +21,23 @@ export function JamLikes({ jamId }: likeStats) {
     const [liked, setLiked] = useState(false);
     const [totalLikes, setTotalLikes] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const { socket, isConnected } = useSocket();
+
+    // 🔌 SOCKET.IO: Listen for real-time like updates from other users
+    useEffect(() => {
+        if (!socket || !isConnected) return;
+
+        const handleLikeUpdate = (data: { jamId: string; likesCount: number; userId: string; liked: boolean }) => {
+            if (data.jamId === jamId) {
+                console.log(`🔌 Like update received: ${data.likesCount} likes`);
+                setTotalLikes(data.likesCount);
+                // Don't update 'liked' state — that's user-specific
+            }
+        };
+
+        socket.on("like-update", handleLikeUpdate);
+        return () => { socket.off("like-update", handleLikeUpdate); };
+    }, [socket, isConnected, jamId]);
 
     const handleLikeToggle = async () => {
         if (isLoading) return; // Prevent double clicks

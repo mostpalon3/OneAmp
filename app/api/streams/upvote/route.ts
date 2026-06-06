@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { VoteSyncService } from '@/app/lib/redis/vote-sync';
+import { emitToJam } from '@/app/lib/socket';
 
 const UpvoteSchema = z.object({
     streamId: z.string(),
@@ -131,6 +132,15 @@ export async function POST(req: NextRequest) {
             userId: user.id,
             timestamp: Date.now(),
             newVoteCount: totalVotes
+        });
+
+        // 🔌 SOCKET.IO: Broadcast vote update to all jam participants
+        emitToJam(stream.jamId, "vote-update", {
+            streamId: data.streamId,
+            votes: totalVotes,
+            type: result.action === "added" ? "upvote" : "remove_upvote",
+            userId: user.id,
+            timestamp: Date.now(),
         });
 
         return NextResponse.json(result, { 

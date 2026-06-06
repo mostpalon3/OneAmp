@@ -9,11 +9,11 @@ import { PlayNextButton } from "./jam/PlayNextButton"
 import { JamStats } from "./jam/JamStats"
 import { Song, CurrentVideo, JamStats as JamStatsType } from "@/app/lib/types/jam-types"
 import { refreshStreams, voteOnStream } from "@/app/lib/utils/api-utils"
-// import { POLLING_INTERVAL } from "@/app/lib/constants/stream-constants"
 import { AddMusicForm } from "./jam/AddMusicForm"
 import { QRCodeShare } from "./jam/HandleShare"
 import { Toaster } from "react-hot-toast"
 import { JamLikes } from "./jam/JamLikes"
+import { useJamSocket } from "@/app/lib/hooks/useSocket"
 
 export default function JamPage({
   jamId,
@@ -36,54 +36,19 @@ export default function JamPage({
   })
   const [isLoading, setIsLoading] = useState(false)
   const [currentPlayTime, setCurrentPlayTime] = useState(0)
-  const [isUserActive, setIsUserActive] = useState(true);
-  const [pollingInterval, setPollingInterval] = useState(2000);
 
-  // Track user activity
-  useEffect(() => {
-    let activityTimer: NodeJS.Timeout;
+  // 🔌 SOCKET.IO: Use jam socket for real-time updates
+  const { socket, isConnected, viewerCount } = useJamSocket(jamId)
 
-    const resetActivityTimer = () => {
-      setIsUserActive(true);
-      clearTimeout(activityTimer);
-      
-      // Consider user inactive after 15 seconds (reduced from 30)
-      activityTimer = setTimeout(() => {
-        setIsUserActive(false);
-      }, 15000);
-    };
-
-    // Listen for user activity
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    events.forEach(event => {
-      document.addEventListener(event, resetActivityTimer, true);
-    });
-
-    resetActivityTimer(); // Initial call
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, resetActivityTimer, true);
-      });
-      clearTimeout(activityTimer);
-    };
-  }, []);
-
-  // Adjust polling based on user activity - faster polling for better vote sync
-  useEffect(() => {
-    if (isUserActive) {
-      setPollingInterval(500); // Very aggressive polling for active users (reduced from 1000)
-      console.log("User is active, polling at 500ms interval");
-    } else {
-      console.log("User is inactive, slowing down polling");
-      setPollingInterval(2000); // Faster polling even for inactive users (reduced from 5000)
-    }
-  }, [isUserActive]);
-
+  // Fallback polling interval — much slower now that sockets handle real-time
+  const FALLBACK_POLL_INTERVAL = 10000 // 10 seconds fallback
 
   const fetchInitialStreams = useCallback(async () => {    
     const streams = await refreshStreams(jamId);
     if (streams) {      
+      console.log("🔍 API response - activeStream:", streams.activeStream);
+      console.log("🔍 API response - streams count:", streams.streams?.length);
+      
       const transformedStreams = streams.streams.map((stream: any) => {
         const transformed = {
           id: stream.id,
@@ -97,17 +62,8 @@ export default function JamPage({
           userVoted: stream.userVoted || null,
           submittedBy: stream.submittedBy,
         };
-        
-        console.log(`🎵 Stream ${stream.id}: votes=${transformed.votes}, userVoted=${transformed.userVoted}, title="${transformed.title}"`);
         return transformed;
       });
-      
-      console.log(`🎵 All transformed streams for user ${streams.userId}:`, transformedStreams.map((s: { id: any; title: any; votes: any; userVoted: any }) => ({
-        id: s.id,
-        title: s.title,
-        votes: s.votes,
-        userVoted: s.userVoted
-      })));
       
       const sortedStreams = transformedStreams.sort((a: any, b: any) => {
         if (b.votes !== a.votes) {
@@ -139,10 +95,12 @@ export default function JamPage({
         votes: 0,
       };
 
+      console.log("🔍 currentTransformedStream videoId:", currentTransformedStream.videoId);
+      
       setQueue(sortedStreams);
       setCurrentVideo(currentTransformedStream);
     }
-  }, [jamId, pollingInterval]);
+  }, [jamId]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -150,42 +108,148 @@ export default function JamPage({
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Initial fetch + fallback polling (10s instead of 500ms)
   useEffect(() => {
     fetchInitialStreams();
     const interval = setInterval(() => {
       fetchInitialStreams();
-    }, pollingInterval);
+    }, FALLBACK_POLL_INTERVAL);
 
     return () => clearInterval(interval);
   }, [jamId]);
 
+  // 🔌 SOCKET.IO: Listen for real-time vote updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleVoteUpdate = (data: {
+      streamId: string;
+      votes: number;
+      type: string;
+      userId: string;
+    }) => {
+      console.log(`🔌 Vote update received: stream ${data.streamId} = ${data.votes} votes`);
+
+      // Update queue item vote count and re-sort
+      setQueue(prev =>
+        prev.map(song =>
+          String(song.id) === data.streamId
+            ? { ...song, votes: data.votes }
+            : song
+        ).sort((a, b) => b.votes !== a.votes ? b.votes - a.votes : String(a.id).localeCompare(String(b.id)))
+      );
+
+      // Update current video if it's the one being voted on
+      setCurrentVideo(prev =>
+        String(prev.id) === data.streamId
+          ? { ...prev, votes: data.votes }
+          : prev
+      );
+    };
+
+    socket.on("vote-update", handleVoteUpdate);
+    return () => { socket.off("vote-update", handleVoteUpdate); };
+  }, [socket, isConnected]);
+
+  // 🔌 SOCKET.IO: Listen for new streams added by other users
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleStreamAdded = (data: { stream: any; jamId: string }) => {
+      console.log(`🔌 New stream added: "${data.stream.title}"`);
+
+      const newSong: Song = {
+        id: data.stream.id,
+        title: data.stream.title || "Unknown Title",
+        artist: data.stream.artist || "Unknown Artist",
+        duration: data.stream.duration || "0:00",
+        platform: "youtube",
+        videoId: data.stream.extractedId,
+        thumbnail: data.stream.smallImg,
+        votes: data.stream.votes || 0,
+        userVoted: null,
+        submittedBy: data.stream.submittedBy || "anonymous",
+      };
+
+      setQueue(prev => {
+        // Don't add if already exists
+        if (prev.some(s => String(s.id) === String(newSong.id))) return prev;
+        const updated = [...prev, newSong];
+        return updated.sort((a, b) =>
+          b.votes !== a.votes ? b.votes - a.votes : String(a.id).localeCompare(String(b.id))
+        );
+      });
+    };
+
+    socket.on("stream-added", handleStreamAdded);
+    return () => { socket.off("stream-added", handleStreamAdded); };
+  }, [socket, isConnected]);
+
+  // 🔌 SOCKET.IO: Listen for now-playing changes (Play Next)
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNowPlayingChanged = (data: {
+      newActiveStream: any;
+      removedStreamId: string | null;
+      queueEmpty: boolean;
+    }) => {
+      console.log(`🔌 Now playing changed:`, data.newActiveStream?.title || "Queue empty");
+
+      if (data.queueEmpty || !data.newActiveStream) {
+        setCurrentVideo({
+          id: 0,
+          title: "No active stream",
+          artist: "Add songs to the queue",
+          duration: "0:00",
+          currentTime: "0:00",
+          platform: "youtube",
+          videoId: "",
+          thumbnail: "/images/not.png",
+          votes: 0,
+        });
+      } else {
+        setCurrentVideo({
+          id: data.newActiveStream.id,
+          title: data.newActiveStream.title || "Unknown Title",
+          artist: data.newActiveStream.artist || "Unknown Artist",
+          duration: data.newActiveStream.duration || "0:00",
+          currentTime: "0:00",
+          platform: data.newActiveStream.type?.toLowerCase() || "youtube",
+          videoId: data.newActiveStream.extractedId,
+          thumbnail: data.newActiveStream.smallImg,
+          votes: data.newActiveStream.votes || 0,
+          submittedBy: data.newActiveStream.submittedBy || "anonymous",
+        });
+      }
+
+      // Remove the played stream from the queue
+      if (data.removedStreamId) {
+        setQueue(prev => prev.filter(song => String(song.id) !== String(data.removedStreamId)));
+      }
+    };
+
+    socket.on("now-playing-changed", handleNowPlayingChanged);
+    return () => { socket.off("now-playing-changed", handleNowPlayingChanged); };
+  }, [socket, isConnected]);
+
+  // Simplified handleVote — no more 3x retry burst
   const handleVote = async (songId: number | string, isUpvote: boolean) => {
     if (!songId) {
       console.error('handleVote called with undefined songId');
       return;
     }
-    
 
     try {
-      // Make the API call first
-      const voteResponse = await voteOnStream(String(songId), isUpvote);
-      console.log(`✅ Vote API response:`, voteResponse);
+      // Make the API call — socket event will broadcast to everyone
+      await voteOnStream(String(songId), isUpvote);
       
-      // Immediately refresh streams multiple times to ensure we get the latest state
-      const refreshPromise = async () => {
-        for (let i = 0; i < 3; i++) {
-          await new Promise(resolve => setTimeout(resolve, 100 * (i + 1))); // 100ms, 200ms, 300ms delays
-          console.log(`🔄 Refresh attempt ${i + 1}/3 after vote`);
-          await fetchInitialStreams();
-        }
-      };
-      
-      refreshPromise();
-      
+      // Single refresh for the user's own vote status (userVoted field)
+      // The socket event handles the vote count for everyone
+      await fetchInitialStreams();
     } catch (error) {
       console.error('❌ Error voting:', error);
-      // If vote fails, also refresh to ensure UI matches server state
-      fetchInitialStreams();
+      fetchInitialStreams(); // Fallback refresh on error
     }
   };
 
@@ -202,10 +266,11 @@ export default function JamPage({
       }
       setCurrentPlayTime(0); // Reset timer for new song
       
-      // Wait a moment before refreshing to ensure database is updated
+      // Socket event will handle UI updates for all users
+      // Small delay then refresh for this user's state consistency
       setTimeout(() => {
         fetchInitialStreams();
-      }, 500);
+      }, 300);
       
     } catch (error) {
       console.error('Error playing next song:', error);
@@ -218,20 +283,47 @@ export default function JamPage({
   }, []);
 
   const handleVideoEnd = useCallback(() => {
-    // Add a small delay to prevent rapid successive calls
     setTimeout(() => {
       handlePlayNext();
     }, 1000);
   }, [handlePlayNext]);
 
+  const syncCounterRef = useRef(0);
+  
   const handleTimeUpdate = useCallback((currentTime: number) => {
     setCurrentPlayTime(currentTime);
-    // Update the current video's currentTime for display
     setCurrentVideo(prev => ({
       ...prev,
       currentTime: formatTime(currentTime)
     }));
-  }, []);
+
+    // 🎵 PLAYBACK SYNC: Creator broadcasts position every 5 seconds
+    if (playVideo && socket && isConnected && currentVideo.videoId) {
+      syncCounterRef.current++;
+      if (syncCounterRef.current % 5 === 0) {
+        socket.emit("playback-sync", {
+          jamId,
+          streamId: String(currentVideo.id),
+          currentTime,
+        });
+      }
+    }
+  }, [playVideo, socket, isConnected, currentVideo.videoId, currentVideo.id, jamId]);
+
+  // 🎵 PLAYBACK SYNC: Joiner receives initial position on join
+  const [initialSeekTime, setInitialSeekTime] = useState<number | null>(null);
+  
+  useEffect(() => {
+    if (!socket || !isConnected || playVideo) return; // Only joiners listen
+
+    const handlePlaybackPosition = (data: { streamId: string; currentTime: number }) => {
+      console.log(`🎵 Playback sync received: seek to ${Math.floor(data.currentTime)}s`);
+      setInitialSeekTime(data.currentTime);
+    };
+
+    socket.on("playback-position", handlePlaybackPosition);
+    return () => { socket.off("playback-position", handlePlaybackPosition); };
+  }, [socket, isConnected, playVideo]);
 
   const streamStats: JamStatsType = {
     totalVotes: queue.reduce((sum, song) => sum + Math.abs(song.votes), 0),
@@ -241,7 +333,7 @@ export default function JamPage({
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
-      <AppBar jamId={jamId} />
+      <AppBar jamId={jamId} viewerCount={viewerCount} isSocketConnected={isConnected} />
 
       <div className="flex-1 md:overflow-hidden">
         <div className="container mx-auto px-4 lg:px-6 py-6 h-full">
@@ -255,6 +347,8 @@ export default function JamPage({
                   currentVideo={currentVideo}
                   onVideoEnd={handleVideoEnd}
                   onTimeUpdate={handleTimeUpdate}
+                  isCreator={playVideo}
+                  startAt={initialSeekTime}
                 />
                 <div className="order-1 lg:hidden">
                   <AddMusicForm 

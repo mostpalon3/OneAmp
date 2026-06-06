@@ -163,15 +163,14 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
     // Reset form state
     resetForm();
     
-    // Refresh the song list AFTER upvote is done
-      setTimeout(async () => {
-        try {
-          await Promise.resolve(onSongAdded());
-          console.log("✅ Song list refreshed");
-        } catch (refreshError) {
-          console.error("❌ Failed to refresh song list:", refreshError);
-        }
-      }, 1000);
+    // Refresh the song list — socket event handles other users,
+    // but we refresh for this user's vote status
+    try {
+      await Promise.resolve(onSongAdded());
+      console.log("✅ Song list refreshed");
+    } catch (refreshError) {
+      console.error("❌ Failed to refresh song list:", refreshError);
+    }
     
   } catch (error) {
     const errorMessage = handleError(error, 'Failed to submit music');

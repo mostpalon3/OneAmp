@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prismaClient from '@/app/lib/db';
 import { DashboardCacheService } from '@/app/lib/redis/dashboard-cache'; // 🔥 NEW
+import { emitToJam } from '@/app/lib/socket';
 
 const devId = "16a7dae2-d8fb-4743-8ba5-78555959eefd"
 
@@ -95,6 +96,14 @@ export async function POST(
       DashboardCacheService.invalidateUserJamsList(jam.userId),
       DashboardCacheService.invalidateUserDashboard(jam.userId),
     ]);
+
+    // 🔌 SOCKET.IO: Broadcast like update to all users in the jam
+    emitToJam(jamId, "like-update", {
+      jamId,
+      likesCount: updatedJam.likesCount,
+      userId: user.id,
+      liked: !existingLike,
+    });
 
     return NextResponse.json({
       success: true,

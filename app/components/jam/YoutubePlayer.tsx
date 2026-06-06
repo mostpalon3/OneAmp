@@ -21,6 +21,8 @@ interface YouTubePlayerProps {
   onToggle: () => void
   onVideoEnd?: () => void
   onTimeUpdate?: (currentTime: number) => void
+  showControls?: boolean
+  startAt?: number | null
 }
 
 declare global {
@@ -30,7 +32,7 @@ declare global {
   }
 }
 
-export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, onTimeUpdate }: YouTubePlayerProps) {
+export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, onTimeUpdate, showControls = true, startAt = null }: YouTubePlayerProps) {
   const playerRef = useRef<any>(null);
   const [player, setPlayer] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -60,9 +62,11 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
         playerVars: {
           autoplay: 1,
           mute: 0,
-          controls: 1,
+          controls: showControls ? 1 : 0,
           modestbranding: 1,
           rel: 0,
+          disablekb: showControls ? 0 : 1,
+          start: startAt ? Math.floor(startAt) : 0,
         },
         events: {
           onReady: (event: any) => {
@@ -124,7 +128,11 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      if (firstScriptTag && firstScriptTag.parentNode) {
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      } else {
+        document.head.appendChild(tag);
+      }
 
       window.onYouTubeIframeAPIReady = () => {
         initializePlayer(currentVideo.videoId);
@@ -233,14 +241,16 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
   };
 
   const formatDuration = (duration: string | number) => {
-    const minutes = Math.floor(Number(duration) / 60);
-    const seconds = Number(duration) % 60;
+    const numDuration = Number(duration);
+    if (isNaN(numDuration)) return typeof duration === 'string' ? duration : "00:00";
+    const minutes = Math.floor(numDuration / 60);
+    const seconds = numDuration % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const getProgressPercentage = () => {
     const totalDuration = Number(currentVideo.duration);
-    if (totalDuration === 0) return 0;
+    if (isNaN(totalDuration) || totalDuration === 0) return 0;
     return Math.min((currentTime / totalDuration) * 100, 100);
   };
 
@@ -249,11 +259,17 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-4">
-        <img
-          src={currentVideo.thumbnail || "/images/not.png"}
-          alt={currentVideo.title}
-          className="w-15 h-12 md:w-auto md:h-20 rounded-lg object-cover"
-        />
+        {currentVideo.videoId ? (
+          <img
+            src={currentVideo.thumbnail}
+            alt={currentVideo.title}
+            className="w-15 h-12 md:w-auto md:h-20 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="w-15 h-12 md:w-20 md:h-20 rounded-lg bg-gray-100 flex items-center justify-center border border-gray-200">
+            <FaMusic className="w-6 h-6 text-gray-400" />
+          </div>
+        )}
         <div className="flex-1">
           <h3 className="text-xs md:text-xl font-semibold text-black mb-1">{currentVideo.title}</h3>
           <p className="text-gray-600 mb-2 md:text-auto text-xs">{currentVideo.artist}</p>
@@ -281,61 +297,32 @@ export function YouTubePlayer({ currentVideo, isActive, onToggle, onVideoEnd, on
         </div>
       </div>
       
-      {/* YouTube Embed or Empty State */}
-      {currentVideo.videoId ? (
-        <div className="aspect-video w-full relative">
-          <div
-            ref={playerRef}
-            className="w-full h-full rounded-lg"
-          />
-          {!isPlayerReady && (
-            <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto mb-2"></div>
-                <p className="text-sm text-gray-500">Loading video...</p>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="aspect-video w-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200 mt-2.5 pt-2.5 md:pt-0">
-          <div className="text-center text-gray-600 max-w-md px-6">
-            {/* Animated Icons */}
-            <div className="relative mb-6">
-              <div className="flex justify-center items-center space-x-4">
-                <div className="animate-bounce delay-0">
-                  <FaYoutube className="md:w-12 md:h-12 w-7 h-7 text-black" />
-                </div>
-                <div className="animate-bounce delay-150">
-                  <HiOutlineMusicalNote className="w-6 h-6 md:w-10 md:h-10 text-black" />
-                </div>
-                <div className="animate-bounce delay-300">
-                  <FaMusic className="w-5 h-5 md:w-8 md:h-8 text-black" />
-                </div>
-              </div>
-            </div>
-            
-            {/* Main Message */}
-            <h3 className="md:text-xl font-semibold text-gray-700 mb-3">
-              Queue Complete! 🎉
-            </h3>
-            <p className="text-gray-600 mb-4 leading-relaxed md:text-md text-xs">
-              All tracks have been played. Add some fresh music to keep the party going!
-            </p>
-            
-            {/* Call to Action */}
-            <div className="flex items-center justify-center space-x-2 text-black font-medium">
-              <FaPlus className="w-4 h-4" />
-              <span>Add New Songs</span>
-            </div>
-            
-            {/* Fun Stats or Encouragement */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <p className="text-xs md:text-sm text-gray-500 italic">
-                "Music is the universal language of mankind" 🎵
-              </p>
+      {/* YouTube Embed — always mounted to avoid removeChild errors */}
+      <div className="aspect-video w-full relative" style={{ display: currentVideo.videoId ? 'block' : 'none' }}>
+        <div
+          ref={playerRef}
+          className="w-full h-full rounded-lg"
+        />
+        {!isPlayerReady && currentVideo.videoId && (
+          <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-500">Loading video...</p>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Empty State — shown when no video */}
+      {!currentVideo.videoId && (
+        <div className="aspect-video w-full bg-gray-50 rounded-lg flex flex-col items-center justify-center border border-gray-200 mt-2.5 pt-2.5 md:pt-0">
+          <FaMusic className="w-8 h-8 text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-700 mb-1">
+            Queue is empty
+          </h3>
+          <p className="text-sm text-gray-500">
+            Add a song to start playing
+          </p>
         </div>
       )}
     </div>

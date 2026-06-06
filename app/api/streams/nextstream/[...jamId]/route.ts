@@ -2,6 +2,7 @@ import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { StreamCacheService } from '@/app/lib/redis/stream-cache';
+import { emitToJam } from '@/app/lib/socket';
 
 export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId: string[] }>} ) {
     try {
@@ -34,26 +35,29 @@ export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId
         });
 
         if (streams.length === 0) {
-            // No more songs in queue - clear current stream (if exists)
+            // No more songs in queue — clear the current stream
             const existingCurrentStream = await prismaClient.currentStream.findUnique({
-                where: {
-                    jamId: jamId
-                }
+                where: { jamId: jamId }
             });
 
             if (existingCurrentStream) {
                 await prismaClient.currentStream.delete({
-                    where: {
-                        jamId: jamId,
-                    }
+                    where: { jamId: jamId }
                 });
             }
 
             // Invalidate cache when queue becomes empty
             await StreamCacheService.invalidateStreamCache(jamId);
 
+            // 🔌 SOCKET.IO: Notify all users that queue is empty
+            emitToJam(jamId, "now-playing-changed", {
+                newActiveStream: null,
+                removedStreamId: existingCurrentStream ? existingCurrentStream.streamId : null,
+                queueEmpty: true,
+            });
+
             return NextResponse.json({
-                message: "Queue is empty - reset to fallback",
+                message: "Queue is empty - no more songs to play",
                 queueEmpty: true
             }, {
                 status: 200
@@ -97,6 +101,24 @@ export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId
             type: 'next_stream',
             newActiveStreamId: updatedStream.id,
             queueEmpty: false
+        });
+
+        // 🔌 SOCKET.IO: Notify all jam participants about the new now-playing
+        emitToJam(jamId, "now-playing-changed", {
+            newActiveStream: {
+                id: updatedStream.id,
+                title: updatedStream.title,
+                artist: updatedStream.artist,
+                duration: updatedStream.duration,
+                smallImg: updatedStream.smallImg,
+                bigImg: updatedStream.bigImg,
+                extractedId: updatedStream.extractedId,
+                type: updatedStream.type,
+                submittedBy: updatedStream.submittedBy,
+                votes: 0,
+            },
+            removedStreamId: updatedStream.id,
+            queueEmpty: false,
         });
 
         return NextResponse.json({

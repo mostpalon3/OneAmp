@@ -5,10 +5,8 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { BiMusic } from "react-icons/bi"
 import { usePathname, useRouter } from "next/navigation";
-import { FaShare, FaUsers } from "react-icons/fa";
+import { FaShare, FaUsers, FaWifi } from "react-icons/fa";
 import { handleShare } from "./jam/HandleShare";
-import JamPage from "./JamPage";
-
 
 const NAVIGATION_LINKS = [
   { href: "#features", label: "Features" },
@@ -16,10 +14,8 @@ const NAVIGATION_LINKS = [
   { href: "#pricing", label: "Pricing" },
 ] as const;
 
-
-
 // Fix the component signature
-export function AppBar({ jamId }: { jamId?: string } = {}) {
+export function AppBar({ jamId, viewerCount = 0, isSocketConnected = false }: { jamId?: string; viewerCount?: number; isSocketConnected?: boolean } = {}) {
   const session = useSession();
   const pathname = usePathname();
   const router = useRouter();
@@ -27,8 +23,6 @@ export function AppBar({ jamId }: { jamId?: string } = {}) {
   const isHomePage = pathname === "/";
   const isJamPage = pathname.startsWith("/jams/" ) || pathname.startsWith("/creator/" );
   const isAuthenticated = Boolean(session.data?.user);
-
-
 
   const Logo = () => (
   <Link href="/" className="flex items-center space-x-2">
@@ -56,12 +50,12 @@ const HomeNavigation = () => (
 const JamPageStatus = ({ jamId }: { jamId: string }) => (
   <div className="flex items-center space-x-3 md:space-x-4">
     <div className="flex items-center space-x-1 md:space-x-2 bg-gray-100 rounded-full px-2 md:px-3 py-1">
-      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-      <span className="text-xs md:text-sm text-gray-600">Live</span>
+      <div className={`w-2 h-2 rounded-full ${isSocketConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+      <span className="text-xs md:text-sm text-gray-600">{isSocketConnected ? 'Live' : 'Connecting...'}</span>
     </div>
     <div className="sm:flex items-center space-x-1 text-gray-600">
       <FaUsers className="self-center w-full h-3 md:w-4 md:h-4" />
-      <span className="text-[10px] text-center md:text-sm">1,247</span>
+      <span className="text-[10px] text-center md:text-sm">{viewerCount > 0 ? viewerCount.toLocaleString() : '—'}</span>
     </div>
     <Button variant="ghost" size="sm" className="p-1 md:p-2" onClick={() => handleShare(jamId)} >
       <FaShare className="w-3 h-3 md:w-4 md:h-4" />
@@ -112,7 +106,7 @@ const AuthButtons = ({ isAuthenticated, isHomePage }: { isAuthenticated: boolean
         <Logo />
         
         {isHomePage && <HomeNavigation />}
-        {/* {isJamPage && jamId && <JamPageStatus jamId={jamId} />} */}
+        {isJamPage && jamId && <JamPageStatus jamId={jamId} />}
         
         <AuthButtons isAuthenticated={isAuthenticated} isHomePage={isHomePage} />
       </div>
