@@ -42,3 +42,4 @@ yarn-error.log*
 next-env.d.ts
 /app/generated/prisma
 /test-redis.js
+socketio_integration_guide.md
