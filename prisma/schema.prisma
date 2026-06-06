@@ -47,6 +47,8 @@ model Profile {
   image            String   @default("")
   username         String?  @unique
   favoriteGenre    String?
+  favoriteSinger   String?
+  spotifyUrl       String?
   profileCompleted Boolean  @default(false)
   
   createdAt        DateTime @default(now())

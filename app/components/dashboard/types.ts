@@ -9,6 +9,9 @@ export interface Profile {
   totalJams: number
   totalLikes: number
   isFollowing: boolean
+  favoriteGenre?: string
+  favoriteSinger?: string
+  spotifyUrl?: string
 }
 
 export interface Jam {

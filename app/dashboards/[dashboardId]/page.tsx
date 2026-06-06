@@ -34,30 +34,28 @@ export default function Dashboard() {
 
   async function fetchUserProfile() {
     try {
-      const response = await fetch("/api/complete-profile", {
-        method: "GET",
-      })
-      if (!response.ok) {
-        throw new Error("Failed to fetch user profile")
-      }
+      const response = await fetch("/api/complete-profile", { method: "GET" })
+      if (!response.ok) throw new Error("Failed to fetch user profile")
       const data = await response.json()
 
       const userDetails = {
-        id: data.profile.id,
+        id: data.user.id,           // ✅ User ID (not profile ID)
         name: data.user.name,
         username: data.profile.username,
-        bio: "Your bio goes here. Share something about yourself!",
-        avatar: data.profile.image,
-        followers: 1247,
-        following: 892,
+        bio: data.profile.bio || "",
+        avatar: data.profile.image || data.user.image,
+        followers: data.profile.followersCount || 0,
+        following: data.profile.followingCount || 0,
         totalJams: jams.length,
-        totalLikes: data.totalUserLikes,
+        totalLikes: data.totalUserLikes || 0,
         isFollowing: false,
+        favoriteGenre: data.profile.favoriteGenre,
+        favoriteSinger: data.profile.favoriteSinger,
+        spotifyUrl: data.profile.spotifyUrl,
       }
       setUser(userDetails)
     } catch (error) {
       console.error("Error fetching user profile:", error)
-      throw error
     }
   }
   useEffect(() => {

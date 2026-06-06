@@ -1,55 +1,37 @@
-import prismaClient from "@/app/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { prismaClient } from "@/app/lib/db";
 
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const { userId } = await params;
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = (page - 1) * limit;
-
-    const [followers, total] = await Promise.all([
-      prismaClient.follow.findMany({
-        where: { followingId: userId },
-        include: {
-          follower: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-              profile: {
-                select: {
-                  username: true,
-                  bio: true,
-                  followersCount: true,
-                  followingCount: true
-                }
-              }
-            }
-          }
+    const followers = await prismaClient.follow.findMany({
+      where: { followingId: userId },
+      include: {
+        follower: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            profile: { select: { username: true, image: true, favoriteGenre: true } },
+          },
         },
-        orderBy: { createdAt: 'desc' },
-        skip: offset,
-        take: limit
-      }),
-      prismaClient.follow.count({
-        where: { followingId: userId }
-      })
-    ]);
-
-    return NextResponse.json({
-      followers: followers.map(f => f.follower),
-      total,
-      page,
-      totalPages: Math.ceil(total / limit)
+      },
+      orderBy: { createdAt: "desc" },
     });
 
+    return NextResponse.json({
+      followers: followers.map((f) => ({
+        id: f.follower.id,
+        name: f.follower.name,
+        username: f.follower.profile?.username,
+        avatar: f.follower.profile?.image || f.follower.image,
+        favoriteGenre: f.follower.profile?.favoriteGenre,
+      })),
+    });
   } catch (error) {
-    console.error('Error fetching followers:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

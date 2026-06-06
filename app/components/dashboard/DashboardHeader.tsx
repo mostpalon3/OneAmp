@@ -5,10 +5,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FaPlus, FaHashtag, FaPlay, FaBars, FaTimes } from "react-icons/fa"
+import { FaPlus, FaHashtag, FaPlay, FaBars, FaTimes, FaUserCircle } from "react-icons/fa"
 import { BiMusic } from "react-icons/bi"
 import { signOut } from "next-auth/react"
 import { useState, useEffect } from "react"
+import Link from "next/link"
+import { UserSearch } from "@/app/components/UserSearch"
 
 interface DashboardHeaderProps {
   jamName: string
@@ -59,11 +61,16 @@ export function DashboardHeader({
     <header className="border-b border-gray-200 bg-white">
       <div className="container mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
             <BiMusic className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold text-black">OneAmp</span>
+        </div>
+
+        {/* Search bar — center */}
+        <div className="hidden md:flex flex-1 max-w-sm mx-6">
+          <UserSearch />
         </div>
 
         {/* Desktop Actions */}
@@ -204,6 +211,13 @@ export function DashboardHeader({
             </DialogContent>
           </Dialog>
 
+          {/* Profile link */}
+          <Link href="/settings/profile">
+            <Button variant="ghost" size="sm" className="text-gray-600 hover:text-black px-2" title="Edit Profile">
+              <FaUserCircle className="w-4 h-4" />
+            </Button>
+          </Link>
+
           {/* Sign Out Button */}
           <Button 
             variant="ghost" 
@@ -230,6 +244,8 @@ export function DashboardHeader({
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-200 px-4 py-4 space-y-3">
+          {/* Mobile search */}
+          <UserSearch />
           {/* Join Jam Dialog */}
           <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
             <DialogTrigger asChild>
