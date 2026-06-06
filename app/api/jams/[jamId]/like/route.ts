@@ -18,7 +18,7 @@ export async function POST(
     }
 
     const user = await prismaClient.user.findUnique({
-      where: { id: session?.user?.id || devId }
+      where: { email: session?.user?.email || '' }
     });
 
     if (!user) {
@@ -129,11 +129,11 @@ export async function GET(
     }
 
     const currentUser = await prismaClient.user.findUnique({
-      where: { id: session?.user?.id || devId }
+      where: { email: session?.user?.email || '' }
     });
 
     if (!currentUser) {
-      return NextResponse.json({ liked: false });
+      return NextResponse.json({ liked: false, likesCount: 0 });
     }
 
     const { jamId } = await params;
