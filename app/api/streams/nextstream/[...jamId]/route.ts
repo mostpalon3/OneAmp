@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { StreamCacheService } from '@/app/lib/redis/stream-cache';
 
-export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId: string }>} ) {
+export async function GET(req: NextRequest,{ params }: { params: Promise<{ jamId: string[] }>} ) {
     try {
         const session = await getServerSession();
         const resolvedParams = await params; // ✅ Await the params
