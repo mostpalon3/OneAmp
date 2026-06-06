@@ -108,15 +108,19 @@ export default function JamPage({
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Initial fetch + fallback polling (10s instead of 500ms)
+  // Track songs with pending votes to prevent socket overwrites
+  const pendingVotes = useRef<Set<string>>(new Set());
+
+  // Initial fetch + fallback polling only when socket is NOT connected
   useEffect(() => {
     fetchInitialStreams();
-    const interval = setInterval(() => {
-      fetchInitialStreams();
-    }, FALLBACK_POLL_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [jamId]);
+    if (!isConnected) {
+      const interval = setInterval(() => {
+        fetchInitialStreams();
+      }, FALLBACK_POLL_INTERVAL);
+      return () => clearInterval(interval);
+    }
+  }, [jamId, isConnected]);
 
   // 🔌 SOCKET.IO: Listen for real-time vote updates
   useEffect(() => {
@@ -128,7 +132,10 @@ export default function JamPage({
       type: string;
       userId: string;
     }) => {
-      console.log(`🔌 Vote update received: stream ${data.streamId} = ${data.votes} votes`);
+      // Skip if this user has a pending vote on this song (optimistic already applied)
+      if (pendingVotes.current.has(data.streamId)) {
+        return;
+      }
 
       // Update queue item vote count and re-sort
       setQueue(prev =>
@@ -233,23 +240,65 @@ export default function JamPage({
     return () => { socket.off("now-playing-changed", handleNowPlayingChanged); };
   }, [socket, isConnected]);
 
-  // Simplified handleVote — no more 3x retry burst
+  // Optimistic voting — update UI instantly, then sync with server
   const handleVote = async (songId: number | string, isUpvote: boolean) => {
     if (!songId) {
       console.error('handleVote called with undefined songId');
       return;
     }
 
-    try {
-      // Make the API call — socket event will broadcast to everyone
-      await voteOnStream(String(songId), isUpvote);
+    const sid = String(songId);
+
+    // Mark as pending so socket events don't overwrite our optimistic state
+    pendingVotes.current.add(sid);
+
+    // 🚀 Optimistic update — change UI immediately
+    setQueue(prev => prev.map(song => {
+      if (String(song.id) !== sid) return song;
       
-      // Single refresh for the user's own vote status (userVoted field)
-      // The socket event handles the vote count for everyone
-      await fetchInitialStreams();
+      const wasUpvoted = song.userVoted === 'up';
+      const wasDownvoted = song.userVoted === 'down';
+      
+      let voteDelta = 0;
+      let newUserVoted: 'up' | 'down' | null = null;
+
+      if (isUpvote) {
+        if (wasUpvoted) {
+          voteDelta = -1;
+          newUserVoted = null;
+        } else if (wasDownvoted) {
+          voteDelta = 2;
+          newUserVoted = 'up';
+        } else {
+          voteDelta = 1;
+          newUserVoted = 'up';
+        }
+      } else {
+        if (wasDownvoted) {
+          voteDelta = 1;
+          newUserVoted = null;
+        } else if (wasUpvoted) {
+          voteDelta = -2;
+          newUserVoted = 'down';
+        } else {
+          voteDelta = -1;
+          newUserVoted = 'down';
+        }
+      }
+
+      return { ...song, votes: song.votes + voteDelta, userVoted: newUserVoted };
+    }).sort((a, b) => b.votes !== a.votes ? b.votes - a.votes : String(a.id).localeCompare(String(b.id))));
+
+    try {
+      await voteOnStream(sid, isUpvote);
     } catch (error) {
       console.error('❌ Error voting:', error);
-      fetchInitialStreams(); // Fallback refresh on error
+      fetchInitialStreams();
+    } finally {
+      // Clear pending after a short delay to let any in-flight socket events pass
+      setTimeout(() => {
+        pendingVotes.current.delete(sid);
+      }, 2000);
     }
   };
 
