@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FaPlus, FaHashtag, FaPlay, FaBars, FaTimes } from "react-icons/fa"
 import { BiMusic } from "react-icons/bi"
 import { signOut } from "next-auth/react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 interface DashboardHeaderProps {
   jamName: string
@@ -27,7 +27,6 @@ interface DashboardHeaderProps {
   handleJoinJam: (jamId: string) => void
   genres: string[]
 }
-const isMobile = window.innerWidth < 768
 
 export function DashboardHeader({
   jamName,
@@ -47,6 +46,14 @@ export function DashboardHeader({
   genres
 }: DashboardHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
   return (
     <header className="border-b border-gray-200 bg-white">
