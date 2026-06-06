@@ -2,6 +2,7 @@ import prismaClient from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { DashboardCacheService } from '@/app/lib/redis/dashboard-cache'; // 🔥 NEW
+import { emitToJam } from '@/app/lib/socket';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ jamId: string }> }) {
     try {
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                     genre: true,
                     createdBy: true,
                     createdAt: true,
+                    hostOnly: true,
                 },
             });
 
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 likesCount: true,
                 createdBy: true,
                 createdAt: true,
+                hostOnly: true,
             },
         });
 
@@ -113,5 +116,55 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     } catch (error) {
         console.error("Error deleting jam:", error);
         return NextResponse.json({msg:"Internal Server Error",error}, { status: 500 });
+    }
+}
+
+// Toggle Stage Mode (hostOnly)
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ jamId: string }> }) {
+    try {
+        const resolvedParams = await params;
+        const jamId = resolvedParams.jamId;
+        const session = await getServerSession();
+
+        if (!session?.user?.email) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { hostOnly } = body;
+
+        if (typeof hostOnly !== "boolean") {
+            return NextResponse.json({ message: "hostOnly must be a boolean" }, { status: 400 });
+        }
+
+        // Verify the user is the jam creator
+        const user = await prismaClient.user.findUnique({
+            where: { email: session.user.email },
+        });
+
+        const jam = await prismaClient.jam.findUnique({
+            where: { id: jamId },
+            select: { userId: true },
+        });
+
+        if (!jam || jam.userId !== user?.id) {
+            return NextResponse.json({ message: "Only the jam creator can change mode" }, { status: 403 });
+        }
+
+        const updatedJam = await prismaClient.jam.update({
+            where: { id: jamId },
+            data: { hostOnly },
+        });
+
+        // 🔌 Broadcast mode change to all participants
+        emitToJam(jamId, "jam-mode-changed", { hostOnly });
+
+        return NextResponse.json({
+            message: `Stage Mode ${hostOnly ? "enabled" : "disabled"}`,
+            hostOnly: updatedJam.hostOnly,
+        });
+    } catch (error) {
+        console.error("Error updating jam mode:", error);
+        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 }

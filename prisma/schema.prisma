@@ -80,6 +80,7 @@ model Jam {
   userId    String
   genre     String     @default("Any Genre")
   likesCount Int       @default(0)
+  hostOnly   Boolean   @default(false)
 
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   streams   Stream[]

@@ -9,9 +9,11 @@ import { Song } from "@/app/lib/types/jam-types"
 interface QueueListProps {
   queue: Song[]
   onVote: (songId: number | string, isUpvote: boolean) => void
+  isCreator?: boolean
+  onDelete?: (songId: number | string) => void
 }
 
-export function QueueList({ queue, onVote }: QueueListProps) {
+export function QueueList({ queue, onVote, isCreator = false, onDelete }: QueueListProps) {
   if (queue.length === 0) {
     return (
       <Card className="border-gray-200">
@@ -53,6 +55,8 @@ export function QueueList({ queue, onVote }: QueueListProps) {
             song={song}
             index={index}
             onVote={onVote}
+            isCreator={isCreator}
+            onDelete={onDelete}
           />
         ))}
       </CardContent>

@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { FaArrowUp, FaArrowDown, FaYoutube } from "react-icons/fa"
+import { FaArrowUp, FaArrowDown, FaYoutube, FaTrash } from "react-icons/fa"
 import { Song } from "@/app/lib/types/jam-types"
 import { formatDurationFromString } from "@/app/lib/utils/format-utils"
 
@@ -9,11 +9,13 @@ interface QueueItemProps {
   song: Song
   index: number
   onVote: (songId: number | string, isUpvote: boolean) => void
+  isCreator?: boolean
+  onDelete?: (songId: number | string) => void
 }
 
-export function QueueItem({ song, index, onVote }: QueueItemProps) {
+export function QueueItem({ song, index, onVote, isCreator = false, onDelete }: QueueItemProps) {
   return (
-    <div className="flex items-center space-x-6 md:space-x-4 md:p-3 p-0 rounded-lg hover:bg-gray-50 transition-colors">
+    <div className="flex items-center space-x-6 md:space-x-4 md:p-3 p-0 rounded-lg hover:bg-gray-50 transition-colors group">
       <div className="flex items-center space-x-3">
         <span className="text-[0.7rem] md:text-sm text-gray-400 w-6 text-center">{index + 1}</span>
         <img
@@ -38,6 +40,17 @@ export function QueueItem({ song, index, onVote }: QueueItemProps) {
       </div>
 
       <div className="flex items-center space-x-2">
+        {/* Delete button — host only, visible on hover */}
+        {isCreator && onDelete && (
+          <button
+            onClick={() => onDelete(song.id)}
+            className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+            title="Remove from queue"
+          >
+            <FaTrash className="w-3 h-3" />
+          </button>
+        )}
+
         <div className="flex items-center space-x-1">
           <Button
             size="sm"

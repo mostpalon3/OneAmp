@@ -10,6 +10,7 @@ import { JamStats } from "./jam/JamStats"
 import { Song, CurrentVideo, JamStats as JamStatsType } from "@/app/lib/types/jam-types"
 import { refreshStreams, voteOnStream } from "@/app/lib/utils/api-utils"
 import { AddMusicForm } from "./jam/AddMusicForm"
+import { SearchBar } from "./jam/SearchBar"
 import { QRCodeShare } from "./jam/HandleShare"
 import { Toaster } from "react-hot-toast"
 import { JamLikes } from "./jam/JamLikes"
@@ -36,6 +37,7 @@ export default function JamPage({
   })
   const [isLoading, setIsLoading] = useState(false)
   const [currentPlayTime, setCurrentPlayTime] = useState(0)
+  const [hostOnly, setHostOnly] = useState(false)
 
   // 🔌 SOCKET.IO: Use jam socket for real-time updates
   const { socket, isConnected, viewerCount } = useJamSocket(jamId)
@@ -121,6 +123,37 @@ export default function JamPage({
       return () => clearInterval(interval);
     }
   }, [jamId, isConnected]);
+
+  // Fetch Stage Mode status on mount
+  useEffect(() => {
+    const fetchJamMode = async () => {
+      try {
+        const res = await fetch(`/api/jams/${jamId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.hostOnly === 'boolean') {
+            setHostOnly(data.hostOnly);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch jam mode:', err);
+      }
+    };
+    fetchJamMode();
+  }, [jamId]);
+
+  // 🔌 SOCKET.IO: Listen for Stage Mode changes
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleModeChanged = (data: { hostOnly: boolean }) => {
+      console.log(`🔌 Jam mode changed: Stage Mode ${data.hostOnly ? 'ON' : 'OFF'}`);
+      setHostOnly(data.hostOnly);
+    };
+
+    socket.on("jam-mode-changed", handleModeChanged);
+    return () => { socket.off("jam-mode-changed", handleModeChanged); };
+  }, [socket, isConnected]);
 
   // 🔌 SOCKET.IO: Listen for real-time vote updates
   useEffect(() => {
@@ -240,6 +273,19 @@ export default function JamPage({
     return () => { socket.off("now-playing-changed", handleNowPlayingChanged); };
   }, [socket, isConnected]);
 
+  // 🔌 SOCKET.IO: Listen for stream deletions by host
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleStreamRemoved = (data: { streamId: string }) => {
+      console.log(`🔌 Stream removed: ${data.streamId}`);
+      setQueue(prev => prev.filter(song => String(song.id) !== data.streamId));
+    };
+
+    socket.on("stream-removed", handleStreamRemoved);
+    return () => { socket.off("stream-removed", handleStreamRemoved); };
+  }, [socket, isConnected]);
+
   // Optimistic voting — update UI instantly, then sync with server
   const handleVote = async (songId: number | string, isUpvote: boolean) => {
     if (!songId) {
@@ -299,6 +345,24 @@ export default function JamPage({
       setTimeout(() => {
         pendingVotes.current.delete(sid);
       }, 2000);
+    }
+  };
+
+  // Delete song from queue (host only)
+  const handleDelete = async (songId: number | string) => {
+    const sid = String(songId);
+    // Optimistic removal
+    setQueue(prev => prev.filter(song => String(song.id) !== sid));
+
+    try {
+      await fetch('/api/streams/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ streamId: sid }),
+      });
+    } catch (error) {
+      console.error('❌ Error deleting:', error);
+      fetchInitialStreams(); // Revert on failure
     }
   };
 
@@ -392,20 +456,45 @@ export default function JamPage({
             {/* Main Content Section - 2/3 width with hidden scrollbar */}
             <div className="lg:col-span-2 md:overflow-y-auto scrollbar-hide">
               <div className="space-y-6">
-                <NowPlaying 
-                  currentVideo={currentVideo}
-                  onVideoEnd={handleVideoEnd}
-                  onTimeUpdate={handleTimeUpdate}
-                  isCreator={playVideo}
-                  startAt={initialSeekTime}
-                />
+                <SearchBar jamId={jamId} onSongAdded={fetchInitialStreams} />
+                {/* In Stage Mode, joiners don't see the video player */}
+                {hostOnly && !playVideo ? (
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <span className="text-lg">🎧</span>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900">Stage Mode</h3>
+                        <p className="text-sm text-gray-500">Music is playing on the host&apos;s device</p>
+                      </div>
+                    </div>
+                    {currentVideo.videoId && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <img src={currentVideo.thumbnail} alt={currentVideo.title} className="w-12 h-9 rounded object-cover" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{currentVideo.title}</p>
+                          <p className="text-xs text-gray-500 truncate">{currentVideo.artist}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <NowPlaying 
+                    currentVideo={currentVideo}
+                    onVideoEnd={handleVideoEnd}
+                    onTimeUpdate={handleTimeUpdate}
+                    isCreator={playVideo}
+                    startAt={initialSeekTime}
+                  />
+                )}
                 <div className="order-1 lg:hidden">
                   <AddMusicForm 
                     jamId={jamId}
                     onSongAdded={fetchInitialStreams}
                   />
                 </div>
-                <QueueList queue={queue} onVote={handleVote} />
+                <QueueList queue={queue} onVote={handleVote} isCreator={playVideo} onDelete={handleDelete} />
               </div>
             </div>
 
@@ -425,6 +514,42 @@ export default function JamPage({
                     isLoading={isLoading}
                     queueEmpty={queue.length === 0}
                   />
+                )}
+
+                {/* Stage Mode Toggle — creator only */}
+                {playVideo && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-900">Stage Mode</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Music plays only on your device</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const newVal = !hostOnly;
+                          setHostOnly(newVal);
+                          try {
+                            await fetch(`/api/jams/${jamId}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ hostOnly: newVal }),
+                            });
+                          } catch (err) {
+                            setHostOnly(!newVal); // revert on error
+                          }
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${
+                          hostOnly ? 'bg-black' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                            hostOnly ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 <JamStats stats={streamStats} />
