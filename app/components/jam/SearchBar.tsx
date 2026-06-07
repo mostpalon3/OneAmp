@@ -25,6 +25,7 @@ export function SearchBar({ jamId, onSongAdded }: SearchBarProps) {
   const [isSearching, setIsSearching] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
+  const [addError, setAddError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -69,6 +70,7 @@ export function SearchBar({ jamId, onSongAdded }: SearchBarProps) {
 
   const handleAddSong = async (result: SearchResult) => {
     setAddingId(result.videoId)
+    setAddError(null)
     try {
       const responseData = await submitStream(jamId, result.url)
       const streamId = responseData?.stream?.id
@@ -89,7 +91,9 @@ export function SearchBar({ jamId, onSongAdded }: SearchBarProps) {
       setResults([])
       setIsOpen(false)
     } catch (err) {
-      console.error("Failed to add song:", err)
+      const msg = err instanceof Error ? err.message : "Failed to add song"
+      setAddError(msg)
+      setTimeout(() => setAddError(null), 6000)
     } finally {
       setAddingId(null)
     }
@@ -175,6 +179,13 @@ export function SearchBar({ jamId, onSongAdded }: SearchBarProps) {
               </button>
             </div>
           ))}
+        </div>
+      )}
+      {/* Error banner (rate limit, etc.) */}
+      {addError && (
+        <div className="mt-1.5 flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 animate-in fade-in duration-200">
+          <span className="text-base leading-none">⚠️</span>
+          <span>{addError}</span>
         </div>
       )}
     </div>

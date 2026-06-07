@@ -4,8 +4,9 @@ import { prismaClient } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/lib/auth"
 import { StreamCacheService } from '@/app/lib/redis/stream-cache';
-import { DashboardCacheService } from '@/app/lib/redis/dashboard-cache'; // 🔥 ADD
+import { DashboardCacheService } from '@/app/lib/redis/dashboard-cache';
 import { emitToJam } from '@/app/lib/socket';
+import { RateLimiter, songAddKey, SONG_ADD_LIMIT, SONG_ADD_WINDOW } from '@/app/lib/redis/rate-limiter';
 
 // import { getServerSession } from "next-auth";
 // import { GET as handler } from "@/app/api/auth/[...nextauth]/route";
@@ -143,20 +144,39 @@ export async function POST(req: NextRequest) {
     const isDev = process.env.NODE_ENV === "development";
 
     if (!session?.user?.id && !isDev) {
-      return NextResponse.json({
-        message: "Authentication required"
-      }, {
-        status: 403
-      });
+      return NextResponse.json({ message: "Authentication required" }, { status: 403 });
     }
 
     // Validate YouTube URL
     if (!isValidYouTubeUrl(data.url)) {
       return NextResponse.json({
         message: "Only YouTube links are supported at the moment, please enter a valid YouTube link"
-      }, {
-        status: 411
-      });
+      }, { status: 411 });
+    }
+
+    // ✅ RATE LIMIT: 5 songs per user per jam per 30 minutes
+    // Resolve user ID — session.user.id may be absent in some NextAuth adapters
+    let userId = session?.user?.id;
+    if (!userId && session?.user?.email) {
+      const u = await prismaClient.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+      userId = u?.id;
+    }
+    if (!userId && !isDev) {
+      return NextResponse.json({ message: "Authentication required" }, { status: 403 });
+    }
+    const effectiveUserId = userId ?? devId;
+
+    const rl = await RateLimiter.check(
+      songAddKey(effectiveUserId, data.jamId),
+      SONG_ADD_LIMIT,
+      SONG_ADD_WINDOW,
+    );
+    if (!rl.allowed) {
+      const mins = Math.ceil(rl.resetIn / 60);
+      return NextResponse.json(
+        { message: `You can only add ${SONG_ADD_LIMIT} songs per 30 minutes. Try again in ${mins} min.` },
+        { status: 429 },
+      );
     }
 
     // Extract video ID

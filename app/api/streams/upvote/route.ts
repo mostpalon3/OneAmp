@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { VoteSyncService } from '@/app/lib/redis/vote-sync';
 import { emitToJam } from '@/app/lib/socket';
+import { RateLimiter, voteKey, VOTE_LIMIT, VOTE_WINDOW } from '@/app/lib/redis/rate-limiter';
 
 const UpvoteSchema = z.object({
     streamId: z.string(),
@@ -29,9 +30,16 @@ export async function POST(req: NextRequest) {
         });
 
         if (!user) {
-            return NextResponse.json({
-                message: "User not found"
-            }, { status: 404 });
+            return NextResponse.json({ message: "User not found" }, { status: 404 });
+        }
+
+        // ✅ RATE LIMIT: 10 votes per user per minute
+        const rl = await RateLimiter.check(voteKey(user.id), VOTE_LIMIT, VOTE_WINDOW);
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { message: `You're voting too fast. Max ${VOTE_LIMIT} votes per minute. Wait ${rl.resetIn}s.` },
+                { status: 429 },
+            );
         }
 
         // Get jamId from the stream

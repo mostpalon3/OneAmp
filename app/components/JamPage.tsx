@@ -38,6 +38,7 @@ export default function JamPage({
   const [isLoading, setIsLoading] = useState(false)
   const [currentPlayTime, setCurrentPlayTime] = useState(0)
   const [hostOnly, setHostOnly] = useState(false)
+  const [voteError, setVoteError] = useState<string | null>(null)
 
   // 🔌 SOCKET.IO: Use jam socket for real-time updates
   const { socket, isConnected, viewerCount } = useJamSocket(jamId)
@@ -338,8 +339,13 @@ export default function JamPage({
     try {
       await voteOnStream(sid, isUpvote);
     } catch (error) {
-      console.error('❌ Error voting:', error);
+      const msg = error instanceof Error ? error.message : 'Vote failed';
+      // Revert optimistic update on any error
       fetchInitialStreams();
+      if (msg.toLowerCase().includes('fast') || msg.toLowerCase().includes('429') || msg.toLowerCase().includes('max')) {
+        setVoteError(msg);
+        setTimeout(() => setVoteError(null), 5000);
+      }
     } finally {
       // Clear pending after a short delay to let any in-flight socket events pass
       setTimeout(() => {
@@ -447,6 +453,15 @@ export default function JamPage({
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
       <AppBar jamId={jamId} viewerCount={viewerCount} isSocketConnected={isConnected} />
+
+      {/* Vote rate-limit toast */}
+      {voteError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl shadow-xl animate-in slide-in-from-bottom-4 duration-300">
+          <span>⚡</span>
+          <span>{voteError}</span>
+          <button onClick={() => setVoteError(null)} className="ml-1 text-gray-400 hover:text-white">✕</button>
+        </div>
+      )}
 
       <div className="flex-1 md:overflow-hidden">
         <div className="container mx-auto px-4 lg:px-6 py-6 h-full">

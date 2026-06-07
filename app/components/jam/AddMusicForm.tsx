@@ -173,8 +173,10 @@ export function AddMusicForm({ jamId, onSongAdded }: AddMusicFormProps) {
     }
     
   } catch (error) {
-    const errorMessage = handleError(error, 'Failed to submit music');
-    setError(`Failed to submit music: ${errorMessage}`);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to submit music';
+    setError(errorMessage);
+    // Auto-clear after 8 seconds
+    setTimeout(() => setError(null), 8000);
   } finally {
     setIsSubmitting(false)
   }

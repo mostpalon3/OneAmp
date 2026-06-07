@@ -52,8 +52,8 @@ export async function submitStream(jamId: string,url: string) {
   });
 
   if (!response.ok) {
-    console.error("Failed to submit stream:", response);
-    throw new Error('Failed to submit stream');
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.message || 'Failed to submit stream');
   }
 
   return response.json();
@@ -73,7 +73,8 @@ export async function voteOnStream(streamId: string, isUpvote: boolean) {
   });
 
   if (!response.ok) {
-    throw new Error('Vote failed');
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.message || 'Vote failed');
   }
 
   const result = await response.json();
